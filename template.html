@@ -174,7 +174,12 @@ function wordHTML(w){
 /* 음독 가타카나 → 히라가나 표시용 변환 */
 function k2h(s){return (s||"").replace(/[ァ-ヶ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0x60);});}
 function onJoin(k){return k.on.map(k2h).join("、")||"—";}
-function readSpeak(r){return k2h(r).replace(/\..*/,"");}  /* 히라가나 + 오쿠리가나(점) 제거 */
+function readSpeak(r){return k2h(r).replace(/\./g,"");}  /* 점(오쿠리가나 구분) 제거 → 전체 읽기 */
+/* 훈독을 한자+후리가나 형태로: "い.る"→入(い)る, "ひ"→日(ひ) */
+function kunForm(ch,r){const i=r.indexOf(".");
+  if(i<0)return ruby(ch,k2h(r));
+  return ruby(ch,k2h(r.slice(0,i)))+r.slice(i+1);}
+function kunJoin(k){return k.kun.length?k.kun.map(r=>kunForm(k.char,r)).join("、"):"—";}
 /* 동사 활용: 표제(surface)가 う단 히라가나 오쿠리가나로 끝나면 동사로 보고 て형/た형 생성 */
 const URO=/[うくぐすつぬぶむる]/;
 const IEROW=/[いきしちにひみりゐぎじぢびぴえけせてねへめれゑげぜでべぺ]/;  /* い·え단(1단 판정) */
@@ -254,7 +259,7 @@ function showDetail(char){
     <div class="sec"><h2>1. 기본 정보</h2><ul>
       <li><span class="mark">의미</span><b>${k.ko}</b> <span class="en">${k.en.join(", ")}</span></li>
       <li><span class="mark">음독</span><span class="jp">${onJoin(k)}</span>${k.on.length?`<button class="spk" onclick="speak('${k2h(k.on[0])}')">🔊</button>`:""}</li>
-      <li><span class="mark">훈독</span><span class="jp">${k.kun.join("、")||"—"}</span>${k.kun.length?`<button class="spk" onclick="speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</li>
+      <li><span class="mark">훈독</span><span class="jp">${kunJoin(k)}</span>${k.kun.length?`<button class="spk" onclick="speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</li>
     </ul></div>
     <div class="sec"><h2>2. 한자 모양 해설</h2>
       ${rich?k.shape.map(s=>`<p class="note">${s}</p>`).join(""):`<div class="todo">이 한자의 어원 해설은 준비 중입니다.</div>`}
@@ -263,7 +268,7 @@ function showDetail(char){
       <p class="note">음독은 <span class="jp">${onJoin(k)}</span>입니다. ${rich?(k.onNote||""):""}</p>
       ${rich&&k.onWords.length?`<div class="sub">음독 대표단어</div><ul>${wordsBlock(k.onWords)}</ul>`:`<div class="todo">대표단어는 준비 중입니다.</div>`}</div>
     <div class="sec"><h2>4. 훈독 상세</h2>
-      <p class="note">훈독은 <span class="jp">${k.kun.join("、")||"—"}</span>입니다. ${rich?(k.kunNote||""):""}</p>
+      <p class="note">훈독은 <span class="jp">${kunJoin(k)}</span>입니다. ${rich?(k.kunNote||""):""}</p>
       ${rich&&k.kunWords.length?`<div class="sub">훈독 대표단어</div><ul>${wordsBlock(k.kunWords)}</ul>`:`<div class="todo">대표단어는 준비 중입니다.</div>`}</div>`;
   $("#bFav").onclick=e=>{toggleSet(FAV,"kanji_fav",char);e.target.classList.toggle("on",FAV.has(char));};
   $("#bChk").onclick=e=>{toggleSet(LEARNED,"kanji_learned",char);e.target.classList.toggle("on",LEARNED.has(char));};
@@ -288,7 +293,7 @@ function renderCard(){
       <div class="face b">
         <p class="ko">${k.ko}</p>
         <p class="jp">음 ${onJoin(k)} ${k.on.length?`<button class="spk" onclick="event.stopPropagation();speak('${k2h(k.on[0])}')">🔊</button>`:""}</p>
-        <p class="jp">훈 ${k.kun.join("、")||"—"} ${k.kun.length?`<button class="spk" onclick="event.stopPropagation();speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</p>
+        <p class="jp">훈 ${kunJoin(k)} ${k.kun.length?`<button class="spk" onclick="event.stopPropagation();speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</p>
         <p class="en">${k.en.join(", ")}</p>
       </div>
     </div></div>
