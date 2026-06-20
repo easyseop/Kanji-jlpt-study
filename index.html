@@ -89,6 +89,7 @@
   [data-theme="dark"] .tip b{color:#e8b53d}
   .quiz{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px 20px;margin-top:14px;text-align:center}
   .quiz .q{font-size:88px;font-family:"Yu Mincho",serif;margin:4px 0 14px}
+  .quiz .q.qw{font-size:52px;line-height:1.2;word-break:keep-all}
   .quiz .prompt{color:var(--muted);font-size:14px;margin-bottom:14px}
   .opts{display:grid;gap:10px;max-width:440px;margin:0 auto}
   .opt{padding:13px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);cursor:pointer;font-size:15px}
@@ -130,7 +131,7 @@
     <div class="filters" id="lvFilters"></div>
     <div class="filters" id="stFilters"></div>
     <div class="progress" id="progress"></div>
-    <input class="search" id="search" placeholder="한자 · 뜻 · 읽기 검색 (예: 日, 날, ニチ, day)">
+    <input class="search" id="search" placeholder="한자 · 뜻 · 읽기 검색 (예: 日, 날, にち, day)">
     <div class="count" id="count"></div>
     <div class="grid" id="grid"></div>
   </div>
@@ -166,6 +167,10 @@ function speak(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUttera
 /* helpers */
 function ruby(b,r){return r?`<ruby>${b}<rt>${r}</rt></ruby>`:b;}
 function wordHTML(w){return `<span class="jp">${ruby(w[0],w[1])}${ruby(w[2],w[3])}</span> <span class="ko">${w[4]}</span>`;}
+/* 음독 가타카나 → 히라가나 표시용 변환 */
+function k2h(s){return (s||"").replace(/[ァ-ヶ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0x60);});}
+function onJoin(k){return k.on.map(k2h).join("、")||"—";}
+function readSpeak(r){return k2h(r).replace(/\..*/,"");}  /* 히라가나 + 오쿠리가나(점) 제거 */
 function shortMeaning(k){return k.ko||(k.en[0]||"");}
 function hex(ch){return ch.codePointAt(0).toString(16).padStart(5,"0");}
 function inLevel(k){return curLevel==="ALL"||k.level===curLevel;}
@@ -183,7 +188,7 @@ document.querySelectorAll("[data-st]").forEach(c=>c.onclick=()=>{stMode=c.datase
 let curView=[];
 function filtered(f){f=f.trim().toLowerCase();
   return KANJI.filter(k=>inLevel(k)&&stOK(k)&&(!f||k.char.includes(f)||k.ko.toLowerCase().includes(f)
-    ||k.on.join("").toLowerCase().includes(f)||k.kun.join("").toLowerCase().includes(f)||k.en.join(" ").toLowerCase().includes(f)));}
+    ||(k.on.join("")+k.on.map(k2h).join("")).toLowerCase().includes(f)||k.kun.join("").toLowerCase().includes(f)||k.en.join(" ").toLowerCase().includes(f)));}
 function updateProgress(){const pool=KANJI.filter(inLevel);const done=pool.filter(k=>LEARNED.has(k.char)).length;
   const pct=pool.length?Math.round(done/pool.length*100):0;
   $("#progress").innerHTML=`암기 진도 (${curLevel==="ALL"?"전체":curLevel}) · ${done} / ${pool.length} (${pct}%)<div class="bar"><i style="width:${pct}%"></i></div>`;}
@@ -197,7 +202,7 @@ function renderList(f=""){const list=filtered(f);curView=list;updateProgress();$
 function favCell(ch,el){toggleSet(FAV,"kanji_fav",ch);el.classList.toggle("on",FAV.has(ch));if(stMode==="fav")renderList($("#search").value);}
 
 /* 상세 */
-function wordsBlock(g){return g.map(x=>`<li><span class="mark">${x.r}</span>${x.words.map(wordHTML).join(' , ')}</li>`).join("");}
+function wordsBlock(g){return g.map(x=>`<li><span class="mark">${k2h(x.r)}</span>${x.words.map(wordHTML).join(' , ')}</li>`).join("");}
 function showDetail(char){
   const k=KANJI.find(x=>x.char===char);const rich=!!k.shape;
   const idx=curView.findIndex(x=>x.char===char);
@@ -221,14 +226,14 @@ function showDetail(char){
     </div>
     <div class="sec"><h2>1. 기본 정보</h2><ul>
       <li><span class="mark">의미</span><b>${k.ko}</b> <span class="en">${k.en.join(", ")}</span></li>
-      <li><span class="mark">음독</span><span class="jp">${k.on.join("、")||"—"}</span>${k.on.length?`<button class="spk" onclick="speak('${k.on[0]}')">🔊</button>`:""}</li>
-      <li><span class="mark">훈독</span><span class="jp">${k.kun.join("、")||"—"}</span>${k.kun.length?`<button class="spk" onclick="speak('${k.kun[0].replace(/\\..*/,'')}')">🔊</button>`:""}</li>
+      <li><span class="mark">음독</span><span class="jp">${onJoin(k)}</span>${k.on.length?`<button class="spk" onclick="speak('${k2h(k.on[0])}')">🔊</button>`:""}</li>
+      <li><span class="mark">훈독</span><span class="jp">${k.kun.join("、")||"—"}</span>${k.kun.length?`<button class="spk" onclick="speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</li>
     </ul></div>
     <div class="sec"><h2>2. 한자 모양 해설</h2>
       ${rich?k.shape.map(s=>`<p class="note">${s}</p>`).join(""):`<div class="todo">이 한자의 어원 해설은 준비 중입니다.</div>`}
       ${k.tip?`<div class="tip">💡 <b>암기 꿀팁</b> · ${k.tip}</div>`:""}</div>
     <div class="sec"><h2>3. 음독 상세</h2>
-      <p class="note">음독은 <span class="jp">${k.on.join("、")||"—"}</span>입니다. ${rich?(k.onNote||""):""}</p>
+      <p class="note">음독은 <span class="jp">${onJoin(k)}</span>입니다. ${rich?(k.onNote||""):""}</p>
       ${rich&&k.onWords.length?`<div class="sub">음독 대표단어</div><ul>${wordsBlock(k.onWords)}</ul>`:`<div class="todo">대표단어는 준비 중입니다.</div>`}</div>
     <div class="sec"><h2>4. 훈독 상세</h2>
       <p class="note">훈독은 <span class="jp">${k.kun.join("、")||"—"}</span>입니다. ${rich?(k.kunNote||""):""}</p>
@@ -255,8 +260,8 @@ function renderCard(){
       <div class="face f"><div class="big">${k.char}</div><div class="hint">탭하면 뜻 보기</div></div>
       <div class="face b">
         <p class="ko">${k.ko}</p>
-        <p class="jp">음 ${k.on.join("、")||"—"} <button class="spk" onclick="event.stopPropagation();speak('${k.on[0]||k.char}')">🔊</button></p>
-        <p class="jp">훈 ${k.kun.join("、")||"—"}</p>
+        <p class="jp">음 ${onJoin(k)} ${k.on.length?`<button class="spk" onclick="event.stopPropagation();speak('${k2h(k.on[0])}')">🔊</button>`:""}</p>
+        <p class="jp">훈 ${k.kun.join("、")||"—"} ${k.kun.length?`<button class="spk" onclick="event.stopPropagation();speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</p>
         <p class="en">${k.en.join(", ")}</p>
       </div>
     </div></div>
@@ -270,20 +275,40 @@ function cardLv(v){curLevel=v;startCard();}
 function cardSt(v){stMode=v;startCard();}
 
 /* 퀴즈 */
-let qScore=0,qTotal=0;
+let qScore=0,qTotal=0,quizType="kanji";
+const QTYPES=[["kanji","한자"],["word","단어"]];
 function quizPool(){return KANJI.filter(k=>inLevel(k)&&stOK(k));}
-function quizHead(){return `<div class="filters" style="justify-content:center">${LEVELS.map(([v,l])=>`<button class="chip ${v===curLevel?'active':''}" onclick="setQuizLevel('${v}')">${l}</button>`).join("")}</div>
+/* 현재 필터의 한자들에서 대표단어를 모아 단어 풀 생성 */
+function wordPool(){const seen={},out=[];
+  quizPool().forEach(k=>(k.onWords||[]).concat(k.kunWords||[]).forEach(g=>(g.words||[]).forEach(w=>{
+    const word=w[0]+w[2],read=k2h(w[1])+k2h(w[3]),ko=w[4],key=word+"|"+read;
+    if(!seen[key]){seen[key]=1;out.push({word:word,read:read,ko:ko});}})));
+  return out;}
+function quizHead(){return `<div class="filters" style="justify-content:center">${QTYPES.map(([v,l])=>`<button class="chip ${v===quizType?'active':''}" onclick="setQuizType('${v}')">${l}</button>`).join("")}</div>
+  <div class="filters" style="justify-content:center">${LEVELS.map(([v,l])=>`<button class="chip ${v===curLevel?'active':''}" onclick="setQuizLevel('${v}')">${l}</button>`).join("")}</div>
   <div class="filters" style="justify-content:center">${STS.map(([v,l])=>`<button class="chip ${v===stMode?'active':''}" onclick="setQuizMode('${v}')">${l}</button>`).join("")}</div>`;}
-function newQuiz(){const pool=quizPool();
+function newQuiz(){if(quizType==="word")return newWordQuiz();
+  const pool=quizPool();
   if(pool.length<1){$("#view-quiz").innerHTML=quizHead()+`<p class="empty">해당 조건의 한자가 없습니다.</p>`;return;}
   const correct=pool[Math.floor(Math.random()*pool.length)];const ask=Math.random()<0.5;
   const others=KANJI.filter(k=>k!==correct).sort(()=>Math.random()-0.5).slice(0,3);
   const opts=[correct,...others].sort(()=>Math.random()-0.5);
-  const label=k=>ask?shortMeaning(k):`<span class="jp">${k.on.concat(k.kun).join("、")||"—"}</span>`;
+  const label=k=>ask?shortMeaning(k):`<span class="jp">${k.on.map(k2h).concat(k.kun).join("、")||"—"}</span>`;
   $("#view-quiz").innerHTML=quizHead()+`<div class="quiz"><div class="prompt">${ask?"이 한자의 뜻은?":"이 한자의 읽기는?"}</div>
     <div class="q">${correct.char}</div>
     <div class="opts">${opts.map(o=>`<div class="opt" data-c="${o===correct?1:0}" onclick="answer(this)">${label(o)}</div>`).join("")}</div>
     <div class="score" id="score">맞힘 ${qScore} / 푼 문제 ${qTotal}</div></div>`;}
+function newWordQuiz(){const pool=wordPool();
+  if(pool.length<4){$("#view-quiz").innerHTML=quizHead()+`<p class="empty">해당 조건의 단어가 부족합니다. (필터를 넓혀보세요)</p>`;return;}
+  const correct=pool[Math.floor(Math.random()*pool.length)];const ask=Math.random()<0.5;
+  const others=pool.filter(w=>w.ko!==correct.ko&&w.read!==correct.read).sort(()=>Math.random()-0.5).slice(0,3);
+  const opts=[correct,...others].sort(()=>Math.random()-0.5);
+  const label=w=>ask?w.ko:`<span class="jp">${w.read}</span>`;
+  $("#view-quiz").innerHTML=quizHead()+`<div class="quiz"><div class="prompt">${ask?"이 단어의 뜻은?":"이 단어의 읽기는?"} <button class="spk" onclick="speak('${correct.read}')">🔊</button></div>
+    <div class="q qw">${correct.word}</div>
+    <div class="opts">${opts.map(o=>`<div class="opt" data-c="${o===correct?1:0}" onclick="answer(this)">${label(o)}</div>`).join("")}</div>
+    <div class="score" id="score">맞힘 ${qScore} / 푼 문제 ${qTotal}</div></div>`;}
+function setQuizType(v){quizType=v;newQuiz();}
 function setQuizLevel(v){curLevel=v;newQuiz();}
 function setQuizMode(v){stMode=v;newQuiz();}
 function answer(el){if(el.dataset.done)return;qTotal++;const ok=el.dataset.c==="1";
