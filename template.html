@@ -202,6 +202,7 @@
     <button class="mi" data-view="list">📋 한자목록</button>
     <button class="mi" data-view="card">🃏 카드 학습</button>
     <button class="mi" data-view="quiz">❓ 퀴즈</button>
+    <button class="mi" data-view="review">🔁 SRS 복습</button>
     <button class="mi" data-view="vocab">📖 단어장</button>
     <button class="mi" data-view="stats">📊 통계 · 백업</button>
   </div>
@@ -219,6 +220,7 @@
   <div id="view-detail" class="hide"></div>
   <div id="view-card" class="hide"></div>
   <div id="view-quiz" class="hide"></div>
+  <div id="view-review" class="hide"></div>
   <div id="view-vocab" class="hide"></div>
   <div id="view-stats" class="hide"></div>
 </div>
@@ -505,12 +507,13 @@ function renderQuizResult(){
 
 /* 뷰 전환 */
 function setView(v){
-  ["list","detail","card","quiz","stats","vocab"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));
-  $("#vtitle").textContent=v==="card"?" · 카드":v==="quiz"?" · 퀴즈":v==="stats"?" · 통계":v==="vocab"?" · 단어장":"";
+  ["list","detail","card","quiz","review","stats","vocab"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));
+  $("#vtitle").textContent=v==="card"?" · 카드":v==="quiz"?" · 퀴즈":v==="review"?" · 복습":v==="stats"?" · 통계":v==="vocab"?" · 단어장":"";
   closeMenu();
   if(v==="list")renderList($("#search").value);
   if(v==="card")openSetup("card");
   if(v==="quiz")openSetup("quiz");
+  if(v==="review")reviewScreen();
   if(v==="stats")statsScreen();
   if(v==="vocab")vocabScreen();
 }
@@ -564,7 +567,7 @@ function statsScreen(){
   </div>`;
 }
 /* 진도 백업: 내보내기 / 가져오기 */
-const BK_KEYS=["kanji_fav","kanji_learned","kanji_wrong","kanji_stats","kanji_theme"];
+const BK_KEYS=["kanji_fav","kanji_learned","kanji_wrong","kanji_stats","kanji_srs","kanji_theme"];
 function exportData(){const data={};BK_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!=null)data[k]=v;});
   const blob=new Blob([JSON.stringify({app:"kanji-jlpt-study",exported:new Date().toISOString(),data:data},null,2)],{type:"application/json"});
   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="kanji-progress-"+todayKey()+".json";
@@ -653,6 +656,56 @@ function renderGuide(){const s=guideSteps[guideIdx],last=guideIdx===guideSteps.l
 function guideNext(){clearTimeout(guideTimer);if(guideIdx>=guideSteps.length-1)return closeGuide();guideIdx++;renderGuide();}
 function guidePrev(){clearTimeout(guideTimer);if(guideIdx>0)guideIdx--;renderGuide();}
 function closeGuide(){clearTimeout(guideTimer);$("#guide").classList.add("hide");localStorage.setItem("kanji_vocab_guide_seen","1");}
+
+/* SRS 간격 반복 복습 (Leitner) */
+const SRS_STEPS=[1,2,4,8,16,32,64];  /* 단계별 다음 복습까지 일수 */
+let srsQueue=[],srsIdx=0,srsFlip=false,srsNewN=10;
+function loadSRS(){try{return JSON.parse(localStorage.getItem("kanji_srs"))||{};}catch(e){return {};}}
+function saveSRS(o){localStorage.setItem("kanji_srs",JSON.stringify(o));}
+function dayNum(){return Math.floor(Date.now()/86400000);}
+function reviewScreen(){
+  const s=loadSRS(),t=dayNum();
+  const due=Object.keys(s).filter(c=>s[c].due<=t).length;
+  const inSrs=Object.keys(s).length,newAvail=KANJI.filter(k=>!s[k.char]).length;
+  const stat=(v,l)=>`<div class="stat"><div class="sv">${v}</div><div class="sl">${l}</div></div>`;
+  $("#view-review").innerHTML=`<div class="setup">
+    <h2 class="setup-h">🔁 SRS 복습</h2>
+    <p class="savail" style="margin:0 0 14px">틀리면 짧게, 맞히면 점점 길게(1→2→4→8→16→32일) 다시 보여줘 오래 기억하게 합니다.</p>
+    <div class="stats-grid">${stat("📚 "+due,"오늘 복습")}${stat(inSrs,"학습 중")}${stat(newAvail,"남은 한자")}</div>
+    ${due?`<div style="margin-top:18px"><button class="startbtn" onclick="startReview()">오늘 복습 ${due}개 시작 ▶</button></div>`:`<p class="savail" style="margin-top:16px">오늘 복습할 카드가 없어요. 아래에서 새 한자를 추가하세요.</p>`}
+    <div class="slabel" style="margin-top:22px">새 한자 추가 (기초순)</div>
+    ${chipRow([[5,"5개"],[10,"10개"],[20,"20개"]],srsNewN,'setSrsNewN')}
+    <div style="margin-top:8px"><button class="navb" ${newAvail?"":"disabled"} onclick="addNewSrs()">+ 새 한자 ${Math.min(srsNewN,newAvail)}개 추가</button></div>
+  </div>`;
+}
+function setSrsNewN(v){srsNewN=+v;reviewScreen();}
+function addNewSrs(){const s=loadSRS(),t=dayNum();let added=0;
+  for(const k of KANJI){if(added>=srsNewN)break;if(!s[k.char]){s[k.char]={step:0,due:t};added++;}}
+  saveSRS(s);startReview();}
+function startReview(){const s=loadSRS(),t=dayNum();srsQueue=shuffle(Object.keys(s).filter(c=>s[c].due<=t));srsIdx=0;srsFlip=false;
+  if(!srsQueue.length){reviewScreen();return;}renderReview();}
+function renderReview(){
+  if(srsIdx>=srsQueue.length){$("#view-review").innerHTML=`<div class="setup"><h2 class="setup-h">🎉 복습 완료!</h2>
+    <p class="savail">오늘 분량을 마쳤어요. 꾸준함이 최고예요!</p><button class="startbtn" onclick="reviewScreen()">돌아가기</button></div>`;return;}
+  const k=KANJI.find(x=>x.char===srsQueue[srsIdx]);
+  $("#view-review").innerHTML=`
+    <div class="snav"><span class="snum">복습 ${srsIdx+1} / ${srsQueue.length}</span></div>
+    <div class="fc"><div class="fcard ${srsFlip?'flip':''}" onclick="this.classList.toggle('flip')">
+      <div class="face f"><div class="big">${k.char}</div><div class="hint">탭하면 뜻 보기</div></div>
+      <div class="face b">
+        <div class="bk">${k.char}</div><p class="ko">${k.ko}</p>
+        <p class="rdg"><span class="rl on">음</span> <span class="rv">${onJoin(k)}</span>${k.on.length?`<button class="spk" onclick="event.stopPropagation();speak('${k2h(k.on[0])}')">🔊</button>`:""}</p>
+        <p class="rdg"><span class="rl kun">훈</span> <span class="rv">${kunJoinCard(k)}</span>${k.kun.length?`<button class="spk" onclick="event.stopPropagation();speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</p>
+      </div></div></div>
+    <div class="fcbtns">
+      <button class="dunno" onclick="srsGrade(false)">✗ 다시</button>
+      <button class="know" onclick="srsGrade(true)">✓ 알맞음</button>
+    </div>`;
+}
+function srsGrade(ok){const s=loadSRS(),t=dayNum(),c=srsQueue[srsIdx],e=s[c]||{step:0,due:t};
+  e.step=ok?Math.min(e.step+1,SRS_STEPS.length-1):0;e.due=t+SRS_STEPS[e.step];s[c]=e;saveSRS(s);
+  setLearned(c,ok);setWrong(c,!ok);recordStudy(1);
+  srsIdx++;srsFlip=false;renderReview();}
 
 /* PWA: 서비스워커 등록 (오프라인 + 홈화면 설치) */
 if("serviceWorker" in navigator){
