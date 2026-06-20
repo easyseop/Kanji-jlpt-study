@@ -202,7 +202,7 @@
     <button class="mi" data-view="list">📋 한자목록</button>
     <button class="mi" data-view="card">🃏 카드 학습</button>
     <button class="mi" data-view="quiz">❓ 퀴즈</button>
-    <button class="mi" data-view="review">🔁 SRS 복습</button>
+    <button class="mi" data-view="review">🔁 오늘의 복습</button>
     <button class="mi" data-view="vocab">📖 단어장</button>
     <button class="mi" data-view="stats">📊 통계 · 백업</button>
   </div>
@@ -508,7 +508,7 @@ function renderQuizResult(){
 /* 뷰 전환 */
 function setView(v){
   ["list","detail","card","quiz","review","stats","vocab"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));
-  $("#vtitle").textContent=v==="card"?" · 카드":v==="quiz"?" · 퀴즈":v==="review"?" · 복습":v==="stats"?" · 통계":v==="vocab"?" · 단어장":"";
+  $("#vtitle").textContent=v==="card"?" · 카드":v==="quiz"?" · 퀴즈":v==="review"?" · 오늘의 복습":v==="stats"?" · 통계":v==="vocab"?" · 단어장":"";
   closeMenu();
   if(v==="list")renderList($("#search").value);
   if(v==="card")openSetup("card");
@@ -669,7 +669,7 @@ function reviewScreen(){
   const inSrs=Object.keys(s).length,newAvail=KANJI.filter(k=>!s[k.char]).length;
   const stat=(v,l)=>`<div class="stat"><div class="sv">${v}</div><div class="sl">${l}</div></div>`;
   $("#view-review").innerHTML=`<div class="setup">
-    <h2 class="setup-h">🔁 SRS 복습</h2>
+    <h2 class="setup-h">🔁 오늘의 복습</h2>
     <p class="savail" style="margin:0 0 14px">틀리면 짧게, 맞히면 점점 길게(1→2→4→8→16→32일) 다시 보여줘 오래 기억하게 합니다.</p>
     <div class="stats-grid">${stat("📚 "+due,"오늘 복습")}${stat(inSrs,"학습 중")}${stat(newAvail,"남은 한자")}</div>
     ${due?`<div style="margin-top:18px"><button class="startbtn" onclick="startReview()">오늘 복습 ${due}개 시작 ▶</button></div>`:`<p class="savail" style="margin-top:16px">오늘 복습할 카드가 없어요. 아래에서 새 한자를 추가하세요.</p>`}
