@@ -77,7 +77,10 @@
   .ko{margin-left:6px}
   .note{color:var(--ink);opacity:.85}
   .jp{font-family:"Yu Mincho","Hiragino Mincho ProN",serif;font-size:19px}
-  .conj{font-family:inherit;font-size:12.5px;color:var(--accent-d);white-space:nowrap}
+  .wd{margin:9px 0}
+  .conj{margin-top:4px;font-size:15px;color:var(--ink)}
+  .conj .cl{display:inline-block;background:var(--accent);color:#fff;font-size:11px;font-weight:700;
+        border-radius:6px;padding:1px 7px;margin-right:5px;font-family:"Apple SD Gothic Neo",sans-serif;vertical-align:2px}
   .spk{cursor:pointer;border:none;background:none;font-size:15px;opacity:.55;margin-left:4px}
   .spk:hover{opacity:1}
   .en{color:var(--muted);font-size:13px}
@@ -106,7 +109,13 @@
         border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center}
   .face.b{transform:rotateY(180deg)}
   .face .big{font-size:130px;font-family:"Yu Mincho",serif;line-height:1}
-  .face .ko{font-size:26px;font-weight:800;margin:0 0 10px}
+  .face .bk{font-family:"Yu Mincho",serif;font-size:44px;opacity:.22;line-height:1;margin-bottom:2px}
+  .face .ko{font-size:26px;font-weight:800;margin:0 0 12px}
+  .rdg{font-family:"Yu Mincho","Hiragino Mincho ProN",serif;font-size:21px;margin:7px 0;line-height:1.5}
+  .rl{font-family:"Apple SD Gothic Neo",sans-serif;font-size:12px;font-weight:700;color:#fff;border-radius:6px;padding:2px 9px;vertical-align:3px}
+  .rl.on{background:var(--accent)}
+  .rl.kun{background:var(--ok)}
+  .rv{font-size:21px}
   .fc .hint{color:var(--muted);font-size:12px;margin-top:10px;text-align:center}
   .fcbtns{display:flex;gap:12px;max-width:420px;margin:14px auto 0}
   .fcbtns button{flex:1;padding:14px;border-radius:12px;border:1px solid var(--line);font-size:15px;cursor:pointer;background:var(--card);color:var(--ink)}
@@ -166,11 +175,11 @@ $("#theme").textContent=document.documentElement.dataset.theme==="dark"?"☀️"
 function speak(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="ja-JP";u.rate=.9;speechSynthesis.speak(u);}catch(e){}}
 
 /* helpers */
-function ruby(b,r){return r?`<ruby>${b}<rt>${r}</rt></ruby>`:b;}
+function ruby(b,r){return (r&&r!==b)?`<ruby>${b}<rt>${r}</rt></ruby>`:b;}
 function wordHTML(w){
   const surface=w[0]+w[2],vf=verbForms(surface,k2h(w[1])+k2h(w[3]));
-  const conj=vf?` <span class="conj">て ${vf.te} · た ${vf.ta}</span>`:"";
-  return `<span class="jp">${ruby(w[0],k2h(w[1]))}${ruby(w[2],k2h(w[3]))}</span> <span class="ko">${w[4]}</span>${conj}`;}
+  const conj=vf?`<div class="conj"><span class="cl">て</span>${vf.te}　<span class="cl">た</span>${vf.ta}</div>`:"";
+  return `<div class="wd"><span class="jp">${ruby(w[0],k2h(w[1]))}${ruby(w[2],k2h(w[3]))}</span> <span class="ko">${w[4]}</span>${conj}</div>`;}
 /* 음독 가타카나 → 히라가나 표시용 변환 */
 function k2h(s){return (s||"").replace(/[ァ-ヶ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0x60);});}
 function onJoin(k){return k.on.map(k2h).join("、")||"—";}
@@ -180,6 +189,7 @@ function kunForm(ch,r){const i=r.indexOf(".");
   if(i<0)return ruby(ch,k2h(r));
   return ruby(ch,k2h(r.slice(0,i)))+r.slice(i+1);}
 function kunJoin(k){return k.kun.length?k.kun.map(r=>kunForm(k.char,r)).join("、"):"—";}
+function kunJoinCard(k){if(!k.kun.length)return "—";const a=k.kun.slice(0,3).map(r=>kunForm(k.char,r));if(k.kun.length>3)a.push("…");return a.join("、");}
 /* 동사 활용: 표제(surface)가 う단 히라가나 오쿠리가나로 끝나면 동사로 보고 て형/た형 생성 */
 const URO=/[うくぐすつぬぶむる]/;
 const IEROW=/[いきしちにひみりゐぎじぢびぴえけせてねへめれゑげぜでべぺ]/;  /* い·え단(1단 판정) */
@@ -234,7 +244,7 @@ function renderList(f=""){const list=filtered(f);curView=list;updateProgress();$
 function favCell(ch,el){toggleSet(FAV,"kanji_fav",ch);el.classList.toggle("on",FAV.has(ch));if(stMode==="fav")renderList($("#search").value);}
 
 /* 상세 */
-function wordsBlock(g){return g.map(x=>`<li><span class="mark">${k2h(x.r)}</span>${x.words.map(wordHTML).join(' , ')}</li>`).join("");}
+function wordsBlock(g){return g.map(x=>`<li><span class="mark">${k2h(x.r)}</span>${x.words.map(wordHTML).join("")}</li>`).join("");}
 function showDetail(char){
   const k=KANJI.find(x=>x.char===char);const rich=!!k.shape;
   const idx=curView.findIndex(x=>x.char===char);
@@ -291,9 +301,10 @@ function renderCard(){
     <div class="fc"><div class="fcard ${fcFlip?'flip':''}" onclick="this.classList.toggle('flip')">
       <div class="face f"><div class="big">${k.char}</div><div class="hint">탭하면 뜻 보기</div></div>
       <div class="face b">
+        <div class="bk">${k.char}</div>
         <p class="ko">${k.ko}</p>
-        <p class="jp">음 ${onJoin(k)} ${k.on.length?`<button class="spk" onclick="event.stopPropagation();speak('${k2h(k.on[0])}')">🔊</button>`:""}</p>
-        <p class="jp">훈 ${kunJoin(k)} ${k.kun.length?`<button class="spk" onclick="event.stopPropagation();speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</p>
+        <p class="rdg"><span class="rl on">음</span> <span class="rv">${onJoin(k)}</span>${k.on.length?`<button class="spk" onclick="event.stopPropagation();speak('${k2h(k.on[0])}')">🔊</button>`:""}</p>
+        <p class="rdg"><span class="rl kun">훈</span> <span class="rv">${kunJoinCard(k)}</span>${k.kun.length?`<button class="spk" onclick="event.stopPropagation();speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</p>
         <p class="en">${k.en.join(", ")}</p>
       </div>
     </div></div>
