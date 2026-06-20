@@ -16,7 +16,7 @@
 /* ============================================================
    일본어 한자 학습 PWA — 리디자인 스타일시트
    기존 index.html의 <style> 블록을 이 내용으로 교체하면 그대로 적용됩니다.
-   변경점: 햄버거(☰) 메뉴 → 하단 탭바(.bnav)로 네비게이션 교체.
+   변경점: 햄버거 메뉴 → 하단 탭바(.bnav)로 네비게이션 교체.
    클래스명/DOM 구조는 기존과 동일하게 유지했습니다.
    ============================================================ */
 
@@ -74,7 +74,7 @@ h1 #vtitle{color:var(--muted);font-weight:600;font-size:14px}
     transition:.15s;box-shadow:var(--sh-sm)}
 .ic:hover{border-color:var(--accent);color:var(--accent-d)}
 .ic:active{transform:scale(.94)}
-#theme{margin-left:auto}
+#theme{margin-left:auto;width:auto;padding:0 14px;font-size:13px;font-weight:700}
 
 /* ---- 하단 탭바 ---- */
 .bnav{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;
@@ -167,7 +167,7 @@ h1 #vtitle{color:var(--muted);font-weight:600;font-size:14px}
 .bigk{font-family:var(--jp);font-size:128px;line-height:1.02;text-align:center;
   margin:6px 0;color:var(--ink);text-shadow:0 2px 30px color-mix(in srgb,var(--accent) 14%,transparent)}
 .bigspk{border:none;background:var(--accent-soft);border-radius:50%;
-  width:96px;height:96px;font-size:42px;cursor:pointer;color:var(--accent-d);transition:.15s;box-shadow:var(--sh-sm)}
+  width:96px;height:96px;font-size:20px;font-weight:800;cursor:pointer;color:var(--accent-d);transition:.15s;box-shadow:var(--sh-sm)}
 .bigspk:hover{transform:scale(1.05)}
 .bigspk:active{background:var(--accent);color:#fff;transform:scale(.95)}
 .meta{text-align:center;color:var(--muted);font-size:13px;font-weight:600;margin:8px 0 2px}
@@ -365,7 +365,7 @@ ul{margin:12px 0;padding-left:0;list-style:none}
 <body>
 <header><div class="inner">
   <h1>🇯🇵 한자 공부<span id="vtitle"></span></h1>
-  <button class="ic" id="theme" title="다크 모드">🌙</button>
+  <button class="ic" id="theme" title="다크 모드">다크</button>
 </div></header>
 
 <div class="wrap">
@@ -386,17 +386,14 @@ ul{margin:12px 0;padding-left:0;list-style:none}
   <div id="view-more" class="hide">
     <div class="more-list">
       <div class="more-row" onclick="setView('vocab')">
-        <span class="mi-ic">📖</span>
         <div><div class="mt">단어장</div><div class="ms">대표단어 모아보기 · 뜻 가리기 셀프테스트</div></div>
         <span class="arr">›</span>
       </div>
       <div class="more-row" onclick="setView('stats')">
-        <span class="mi-ic">📊</span>
         <div><div class="mt">통계 · 백업</div><div class="ms">연속 학습일 · 정답률 · 내보내기/가져오기</div></div>
         <span class="arr">›</span>
       </div>
       <div class="more-row" onclick="openGuide()">
-        <span class="mi-ic">🪧</span>
         <div><div class="mt">사용법 가이드</div><div class="ms">단어장 셀프테스트 3단계 안내</div></div>
         <span class="arr">›</span>
       </div>
@@ -431,8 +428,8 @@ function setLearned(ch,v){v?LEARNED.add(ch):LEARNED.delete(ch);store.set("kanji_
 if(localStorage.getItem("kanji_theme")==="dark")document.documentElement.dataset.theme="dark";
 $("#theme").onclick=()=>{const d=document.documentElement.dataset.theme==="dark";
   document.documentElement.dataset.theme=d?"":"dark";localStorage.setItem("kanji_theme",d?"light":"dark");
-  $("#theme").textContent=d?"🌙":"☀️";};
-$("#theme").textContent=document.documentElement.dataset.theme==="dark"?"☀️":"🌙";
+  $("#theme").textContent=d?"다크":"라이트";};
+$("#theme").textContent=document.documentElement.dataset.theme==="dark"?"라이트":"다크";
 
 /* TTS */
 function speak(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="ja-JP";u.rate=.9;speechSynthesis.speak(u);}catch(e){}}
@@ -523,9 +520,9 @@ function showDetail(char){
         <a class="${next?'':'dim'}" ${next?`onclick="showDetail('${next}')"`:''}>다음 ▶</a>
       </span>
     </div>
-    <div class="title">「${k.char}」 <button class="spk" onclick="speak('${k.char}')">🔊</button></div>
+    <div class="title">「${k.char}」 <button class="spk" onclick="speak('${k.char}')">듣기</button></div>
     <div class="stroke" id="stroke"><div class="bigk">${k.char}</div></div>
-    <div style="text-align:center;margin:2px 0 4px"><button class="navb" onclick="animateStroke()">✍️ 획순 애니메이션</button></div>
+    <div style="text-align:center;margin:2px 0 4px"><button class="navb" onclick="animateStroke()">획순 애니메이션</button></div>
     <div class="meta">JLPT ${k.level} · ${k.strokes}획</div>
     <div class="actions">
       <button class="btn fav ${FAV.has(char)?'on':''}" id="bFav">★ 즐겨찾기</button>
@@ -533,12 +530,12 @@ function showDetail(char){
     </div>
     <div class="sec"><h2 data-n="1">기본 정보</h2><ul>
       <li><span class="mark">의미</span><b>${k.ko}</b> <span class="en">${k.en.join(", ")}</span></li>
-      <li><span class="mark">음독</span><span class="jp">${onJoin(k)}</span>${k.on.length?`<button class="spk" onclick="speak('${k2h(k.on[0])}')">🔊</button>`:""}</li>
-      <li><span class="mark">훈독</span><span class="jp">${kunJoin(k)}</span>${k.kun.length?`<button class="spk" onclick="speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</li>
+      <li><span class="mark">음독</span><span class="jp">${onJoin(k)}</span>${k.on.length?`<button class="spk" onclick="speak('${k2h(k.on[0])}')">듣기</button>`:""}</li>
+      <li><span class="mark">훈독</span><span class="jp">${kunJoin(k)}</span>${k.kun.length?`<button class="spk" onclick="speak('${readSpeak(k.kun[0])}')">듣기</button>`:""}</li>
     </ul></div>
     <div class="sec"><h2 data-n="2">한자 모양 해설</h2>
       ${rich?k.shape.map(s=>`<p class="note">${s}</p>`).join(""):`<div class="todo">이 한자의 어원 해설은 준비 중입니다.</div>`}
-      ${k.tip?`<div class="tip">💡 <b>암기 꿀팁</b> · ${k.tip}</div>`:""}</div>
+      ${k.tip?`<div class="tip"><b>암기 꿀팁</b> · ${k.tip}</div>`:""}</div>
     <div class="sec"><h2 data-n="3">음독 상세</h2>
       <p class="note">음독은 <span class="jp">${onJoin(k)}</span>입니다. ${rich?k2h(k.onNote||""):""}</p>
       ${rich&&k.onWords.length?`<div class="sub">음독 대표단어</div><ul>${wordsBlock(k.onWords)}</ul>`:`<div class="todo">대표단어는 준비 중입니다.</div>`}</div>
@@ -570,7 +567,7 @@ function renderSetup(){
   const isQuiz=setupKind==="quiz",el=isQuiz?$("#view-quiz"):$("#view-card");
   const avail=sessionPool().length,n=sessCount===0?avail:Math.min(sessCount,avail);
   el.innerHTML=`<div class="setup">
-    <h2 class="setup-h">${isQuiz?"❓ 퀴즈 설정":"🃏 한자카드 설정"}</h2>
+    <h2 class="setup-h">${isQuiz?"퀴즈 설정":"한자카드 설정"}</h2>
     ${isQuiz?`<div class="slabel">유형</div>${chipRow(QTYPES,quizType,'setQType')}`:""}
     <div class="slabel">레벨</div>${chipRow(LEVELS,curLevel,'setSLevel')}
     <div class="slabel">범위</div>${chipRow(STS,stMode,'setSMode')}
@@ -592,7 +589,7 @@ function startCardSession(){let pool=shuffle(KANJI.filter(k=>inLevel(k)&&stOK(k)
   if(!cardDeck.length){openSetup("card");return;}renderCard();}
 function renderCard(){
   if(cardIdx>=cardDeck.length){$("#view-card").innerHTML=`<div class="setup">
-    <h2 class="setup-h">🎉 ${cardDeck.length}장 학습 완료!</h2>
+    <h2 class="setup-h">${cardDeck.length}장 학습 완료!</h2>
     <button class="startbtn" onclick="startCardSession()">한 번 더</button>
     <div style="margin-top:12px"><button class="navb" onclick="openSetup('card')">설정 바꾸기</button></div></div>`;return;}
   const k=cardDeck[cardIdx];
@@ -605,8 +602,8 @@ function renderCard(){
       <div class="face b">
         <div class="bk">${k.char}</div>
         <p class="ko">${k.ko}</p>
-        <p class="rdg"><span class="rl on">음</span> <span class="rv">${onJoin(k)}</span>${k.on.length?`<button class="spk" onclick="event.stopPropagation();speak('${k2h(k.on[0])}')">🔊</button>`:""}</p>
-        <p class="rdg"><span class="rl kun">훈</span> <span class="rv">${kunJoinCard(k)}</span>${k.kun.length?`<button class="spk" onclick="event.stopPropagation();speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</p>
+        <p class="rdg"><span class="rl on">음</span> <span class="rv">${onJoin(k)}</span>${k.on.length?`<button class="spk" onclick="event.stopPropagation();speak('${k2h(k.on[0])}')">듣기</button>`:""}</p>
+        <p class="rdg"><span class="rl kun">훈</span> <span class="rv">${kunJoinCard(k)}</span>${k.kun.length?`<button class="spk" onclick="event.stopPropagation();speak('${readSpeak(k.kun[0])}')">듣기</button>`:""}</p>
       </div>
     </div></div>
     <div class="fcbtns">
@@ -619,7 +616,7 @@ function cardJudge(known){const k=cardDeck[cardIdx];setLearned(k.char,known);set
 
 /* 퀴즈 */
 let quizType="kanji";
-const QTYPES=[["kanji","한자"],["word","단어"],["listen","듣기 🔊"]];
+const QTYPES=[["kanji","한자"],["word","단어"],["listen","듣기 듣기"]];
 function quizPool(){return KANJI.filter(k=>inLevel(k)&&stOK(k));}
 /* 현재 필터의 한자들에서 대표단어를 모아 단어 풀 생성 */
 function wordPool(){const seen={},out=[];
@@ -660,12 +657,12 @@ function renderQuiz(){
   if(quizIdx>=quizItems.length)return renderQuizResult();
   const it=quizItems[quizIdx],done=it.answered!=null;
   const prompt=it.kind==="word"?(it.ask?"이 단어의 뜻은?":"이 단어의 읽기는?")
-    :it.kind==="listen"?"🔊 들리는 읽기의 한자는?":(it.ask?"이 한자의 뜻은?":"이 한자의 읽기는?");
+    :it.kind==="listen"?"들리는 읽기의 한자는?":(it.ask?"이 한자의 뜻은?":"이 한자의 읽기는?");
   const say=it.kind==="word"?it.read:it.kind==="listen"?it.say:it.char;
   const q=it.kind==="word"?`<div class="q qw">${it.word}</div>`
-    :it.kind==="listen"?`<div class="q"><button class="bigspk" onclick="speak('${say}')">🔊</button></div>`
+    :it.kind==="listen"?`<div class="q"><button class="bigspk" onclick="speak('${say}')">듣기</button></div>`
     :`<div class="q">${it.char}</div>`;
-  const spkBtn=it.kind==="listen"?"":` <button class="spk" onclick="speak('${say}')">🔊</button>`;
+  const spkBtn=it.kind==="listen"?"":` <button class="spk" onclick="speak('${say}')">듣기</button>`;
   $("#view-quiz").innerHTML=`
     <div class="snav"><button class="navb" ${quizIdx?'':'disabled'} onclick="quizGo(-1)">◀ 이전</button>
       <span class="snum">${quizIdx+1} / ${quizItems.length}</span>
@@ -673,7 +670,7 @@ function renderQuiz(){
     <div class="quiz"><div class="prompt">${prompt}${spkBtn}</div>${q}
       <div class="opts">${it.opts.map((o,i)=>{let cls="opt";if(done){if(o.correct)cls+=" ok";else if(i===it.answered)cls+=" no";}
         return `<div class="${cls}" ${done?"":`onclick="quizAnswer(${i})"`}>${o.label}</div>`;}).join("")}</div>
-      <div class="score">${done?(it.opts[it.answered].correct?"⭕ 정답":"❌ 오답"):"정답을 고르세요"} · 맞힘 ${quizCorrect()} / ${quizItems.length}</div></div>`;
+      <div class="score">${done?(it.opts[it.answered].correct?"정답":"오답"):"정답을 고르세요"} · 맞힘 ${quizCorrect()} / ${quizItems.length}</div></div>`;
   if(it.kind==="listen"&&!done)setTimeout(()=>speak(say),250);
 }
 function quizAnswer(i){const it=quizItems[quizIdx];if(it.answered!=null)return;it.answered=i;
@@ -686,7 +683,7 @@ function renderQuizResult(){
   const wrong=quizItems.filter(it=>it.answered==null||!it.opts[it.answered].correct);
   $("#view-quiz").innerHTML=`<div class="setup"><h2 class="setup-h">결과</h2>
     <p class="result-score">${correct} / ${total} <span>(${pct}%)</span></p>
-    ${wrong.length?`<div class="slabel">틀린·안 푼 문제 ${wrong.length}개</div><div class="wronglist">${wrong.map(it=>`<span class="wq">${it.kind==="word"?it.word:it.char}</span>`).join("")}</div>`:`<p class="savail">전부 맞혔어요! 🎉</p>`}
+    ${wrong.length?`<div class="slabel">틀린·안 푼 문제 ${wrong.length}개</div><div class="wronglist">${wrong.map(it=>`<span class="wq">${it.kind==="word"?it.word:it.char}</span>`).join("")}</div>`:`<p class="savail">전부 맞혔어요!</p>`}
     <button class="startbtn" onclick="startQuizSession()">한 번 더</button>
     <div style="margin-top:12px"><button class="navb" onclick="openSetup('quiz')">설정 바꾸기</button></div></div>`;
 }
@@ -737,15 +734,15 @@ function statsScreen(){
   const td=s.days[todayKey()]||{studied:0,quizQ:0,quizCorrect:0};
   const stat=(v,l)=>`<div class="stat"><div class="sv">${v}</div><div class="sl">${l}</div></div>`;
   $("#view-stats").innerHTML=`<div class="setup">
-    <h2 class="setup-h">📊 학습 통계</h2>
+    <h2 class="setup-h">학습 통계</h2>
     <div class="stats-grid">
-      ${stat("🔥 "+s.streak,"연속 학습일")}${stat(td.studied,"오늘 학습")}${stat(LEARNED.size,"외운 한자")}
+      ${stat(s.streak,"연속 학습일")}${stat(td.studied,"오늘 학습")}${stat(LEARNED.size,"외운 한자")}
       ${stat(acc+"%","퀴즈 정답률")}${stat(WRONG.size,"복습 필요(오답)")}${stat(s.totalQuizQ,"총 푼 문제")}
     </div>
     <div class="slabel" style="margin-top:24px">진도 백업 · 복원 (기기 변경/캐시 삭제 대비)</div>
     <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-      <button class="navb" onclick="exportData()">⬇️ 내보내기</button>
-      <button class="navb" onclick="$('#importFile').click()">⬆️ 가져오기</button>
+      <button class="navb" onclick="exportData()">내보내기</button>
+      <button class="navb" onclick="$('#importFile').click()">가져오기</button>
     </div>
     <input type="file" id="importFile" accept="application/json" class="hide" onchange="if(this.files[0])importData(this.files[0])">
     ${WRONG.size?`<div style="margin-top:18px"><button class="startbtn" onclick="stMode='wrong';curLevel='ALL';openSetup('card');setView('card')">오답 ${WRONG.size}개 복습 ▶</button></div>`:""}
@@ -790,19 +787,19 @@ function vocabRow(x){
     :`<span class="ko">${x.ko}</span>`;
   return `<li onclick="showDetail('${x.kanji}')">
     <span class="jp">${jp}</span> ${ko}
-    <button class="spk" onclick="event.stopPropagation();speak('${x.read}')">🔊</button>
+    <button class="spk" onclick="event.stopPropagation();speak('${x.read}')">듣기</button>
     ${conj}<span class="vlv">${x.level}</span></li>`;}
 function renderVocabList(){const list=vocabFilter();
   $("#voclistwrap").innerHTML=`<div class="count">${list.length}개 단어</div>
     <ul class="voclist">${list.slice(0,400).map(vocabRow).join("")||'<p class="empty">결과가 없습니다.</p>'}</ul>
     ${list.length>400?'<p class="count">상위 400개만 표시 — 검색으로 좁혀보세요</p>':''}`;}
 function vocabScreen(){
-  $("#view-vocab").innerHTML=`<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="chip" onclick="openGuide()">❓ 사용법</button></div>
+  $("#view-vocab").innerHTML=`<div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="chip" onclick="openGuide()">사용법</button></div>
     ${chipRow(LEVELS,vocabLevel,'setVocabLevel')}
     <input class="search" id="vsearch" placeholder="단어 · 읽기 · 뜻 검색" value="${vocabQ.replace(/"/g,'&quot;')}">
     <div class="slabel">품사</div>${chipRow(POS,vocabPos,'setVocabPos')}
     <div class="slabel">정렬</div>${chipRow(SORTS,vocabSort,'setVocabSort')}
-    <div style="text-align:center;margin-top:10px"><button class="chip ${vocabHide?'active':''}" onclick="toggleVocabHide()">🙈 뜻 가리기 ${vocabHide?'ON':'OFF'}</button></div>
+    <div style="text-align:center;margin-top:10px"><button class="chip ${vocabHide?'active':''}" onclick="toggleVocabHide()">뜻 가리기 ${vocabHide?'ON':'OFF'}</button></div>
     <div id="voclistwrap"></div>`;
   $("#vsearch").addEventListener("input",e=>{vocabQ=e.target.value;renderVocabList();});
   renderVocabList();
@@ -815,22 +812,22 @@ function toggleVocabHide(){vocabHide=!vocabHide;vocabScreen();}
 /* 단어장 사용법 가이드 (단계 애니메이션) */
 const GDUR=5000;let guideIdx=0,guideTimer=null;
 const guideSteps=[
-  {icon:"🎯",title:"1. 공부할 범위 좁히기",
+  {icon:"",title:"1. 공부할 범위 좁히기",
    demo:`<div class="g-chips"><span class="gchip">N5</span><span class="gchip">동사</span><span class="gchip">읽기순</span></div>`,
    body:"레벨(N5) · 품사(동사) · 정렬(읽기순)으로 오늘 외울 범위를 정하세요."},
-  {icon:"🙈",title:"2. 뜻 가리고 셀프테스트",
+  {icon:"",title:"2. 뜻 가리고 셀프테스트",
    demo:`<div class="g-row"><span class="jp">食べる</span><span class="g-mask">먹다</span></div>`,
-   body:"‘🙈 뜻 가리기’를 켜고 단어를 보며 뜻을 떠올린 뒤, <b>탭하면 정답</b>이 나옵니다."},
-  {icon:"🔊",title:"3. 막히면 듣고 깊이 학습",
-   demo:`<div class="g-row"><span class="jp">山</span><span class="g-spk">🔊</span><span class="g-arrow">탭 → 한자 상세</span></div>`,
-   body:"막히는 단어는 🔊로 발음을 듣고, 단어를 <b>탭</b>해 한자 상세(어원·획순)까지 학습하세요."}
+   body:"‘뜻 가리기’를 켜고 단어를 보며 뜻을 떠올린 뒤, <b>탭하면 정답</b>이 나옵니다."},
+  {icon:"",title:"3. 막히면 듣고 깊이 학습",
+   demo:`<div class="g-row"><span class="jp">山</span><span class="g-arrow">탭 → 한자 상세</span></div>`,
+   body:"막히는 단어는 발음을 듣고, 단어를 <b>탭</b>해 한자 상세(어원·획순)까지 학습하세요."}
 ];
 function openGuide(){clearTimeout(guideTimer);guideIdx=0;$("#guide").classList.remove("hide");renderGuide();}
 function renderGuide(){const s=guideSteps[guideIdx],last=guideIdx===guideSteps.length-1;
   $("#guide").innerHTML=`<div class="gcard">
     <button class="gclose" onclick="closeGuide()">✕</button>
     <div class="gdots">${guideSteps.map((_,i)=>`<span class="${i===guideIdx?'on':''}"></span>`).join("")}</div>
-    <div class="gicon">${s.icon}</div><h3 class="gtitle">${s.title}</h3>
+    <h3 class="gtitle">${s.title}</h3>
     <div class="gdemo">${s.demo}</div><p class="gbody">${s.body}</p>
     <div class="gprog"><i style="animation-duration:${GDUR}ms"></i></div>
     <div class="gnav">
@@ -854,9 +851,9 @@ function reviewScreen(){
   const inSrs=Object.keys(s).length,newAvail=KANJI.filter(k=>!s[k.char]).length;
   const stat=(v,l)=>`<div class="stat"><div class="sv">${v}</div><div class="sl">${l}</div></div>`;
   $("#view-review").innerHTML=`<div class="setup">
-    <h2 class="setup-h">🔁 오늘의 복습</h2>
+    <h2 class="setup-h">오늘의 복습</h2>
     <p class="savail" style="margin:0 0 14px">틀리면 짧게, 맞히면 점점 길게(1→2→4→8→16→32일) 다시 보여줘 오래 기억하게 합니다.</p>
-    <div class="stats-grid">${stat("📚 "+due,"오늘 복습")}${stat(inSrs,"학습 중")}${stat(newAvail,"남은 한자")}</div>
+    <div class="stats-grid">${stat(due,"오늘 복습")}${stat(inSrs,"학습 중")}${stat(newAvail,"남은 한자")}</div>
     ${due?`<div style="margin-top:18px"><button class="startbtn" onclick="startReview()">오늘 복습 ${due}개 시작 ▶</button></div>`:`<p class="savail" style="margin-top:16px">오늘 복습할 카드가 없어요. 아래에서 새 한자를 추가하세요.</p>`}
     <div class="slabel" style="margin-top:22px">새 한자 추가 (기초순)</div>
     ${chipRow([[5,"5개"],[10,"10개"],[20,"20개"]],srsNewN,'setSrsNewN')}
@@ -870,7 +867,7 @@ function addNewSrs(){const s=loadSRS(),t=dayNum();let added=0;
 function startReview(){const s=loadSRS(),t=dayNum();srsQueue=shuffle(Object.keys(s).filter(c=>s[c].due<=t));srsIdx=0;srsFlip=false;
   if(!srsQueue.length){reviewScreen();return;}renderReview();}
 function renderReview(){
-  if(srsIdx>=srsQueue.length){$("#view-review").innerHTML=`<div class="setup"><h2 class="setup-h">🎉 복습 완료!</h2>
+  if(srsIdx>=srsQueue.length){$("#view-review").innerHTML=`<div class="setup"><h2 class="setup-h">복습 완료!</h2>
     <p class="savail">오늘 분량을 마쳤어요. 꾸준함이 최고예요!</p><button class="startbtn" onclick="reviewScreen()">돌아가기</button></div>`;return;}
   const k=KANJI.find(x=>x.char===srsQueue[srsIdx]);
   $("#view-review").innerHTML=`
@@ -879,8 +876,8 @@ function renderReview(){
       <div class="face f"><div class="big">${k.char}</div><div class="hint">탭하면 뜻 보기</div></div>
       <div class="face b">
         <div class="bk">${k.char}</div><p class="ko">${k.ko}</p>
-        <p class="rdg"><span class="rl on">음</span> <span class="rv">${onJoin(k)}</span>${k.on.length?`<button class="spk" onclick="event.stopPropagation();speak('${k2h(k.on[0])}')">🔊</button>`:""}</p>
-        <p class="rdg"><span class="rl kun">훈</span> <span class="rv">${kunJoinCard(k)}</span>${k.kun.length?`<button class="spk" onclick="event.stopPropagation();speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</p>
+        <p class="rdg"><span class="rl on">음</span> <span class="rv">${onJoin(k)}</span>${k.on.length?`<button class="spk" onclick="event.stopPropagation();speak('${k2h(k.on[0])}')">듣기</button>`:""}</p>
+        <p class="rdg"><span class="rl kun">훈</span> <span class="rv">${kunJoinCard(k)}</span>${k.kun.length?`<button class="spk" onclick="event.stopPropagation();speak('${readSpeak(k.kun[0])}')">듣기</button>`:""}</p>
       </div></div></div>
     <div class="fcbtns">
       <button class="dunno" onclick="srsGrade(false)">✗ 다시</button>
