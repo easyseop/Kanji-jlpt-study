@@ -1,6 +1,6 @@
 /* 한자 공부 앱 서비스워커 — 오프라인 캐싱
    앱을 고치면 CACHE 버전을 올려라 (예: kanji-v2). */
-const CACHE = "kanji-v18";
+const CACHE = "kanji-v19";
 const ASSETS = [
   "./",
   "./index.html",

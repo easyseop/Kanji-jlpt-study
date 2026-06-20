@@ -82,15 +82,15 @@ h1 #vtitle{color:var(--muted);font-weight:600;font-size:14px}
   backdrop-filter:saturate(1.6) blur(16px);-webkit-backdrop-filter:saturate(1.6) blur(16px);
   border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
 .bnav button{flex:1;border:none;background:none;cursor:pointer;display:flex;
-  flex-direction:column;align-items:center;gap:3px;padding:7px 2px;border-radius:13px;
-  color:var(--faint);font-family:var(--ko);font-size:11px;font-weight:700;
+  flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 2px;border-radius:13px;
+  color:var(--faint);font-family:var(--ko);font-size:14px;font-weight:700;letter-spacing:-.01em;
   min-height:52px;transition:.15s;position:relative}
 .bnav button .bi{font-size:22px;line-height:1;transition:.15s}
 .bnav button:active{transform:scale(.92)}
 .bnav button.active{color:var(--accent-d)}
 .bnav button.active .bi{transform:translateY(-1px) scale(1.06)}
-.bnav button.active::before{content:"";position:absolute;top:4px;width:34px;height:30px;
-  background:var(--accent-soft);border-radius:10px;z-index:-1}
+.bnav button.active::before{content:"";position:absolute;top:0;width:26px;height:3px;
+  background:var(--accent);border-radius:0 0 3px 3px}
 
 /* ---- 탭/칩 (필터) ---- */
 .tab,.chip{font-family:var(--ko);cursor:pointer;transition:.15s;
@@ -404,11 +404,11 @@ ul{margin:12px 0;padding-left:0;list-style:none}
   </div>
 </div>
 <nav class="bnav" id="bnav">
-  <button data-view="list"><span class="bi">📋</span>목록</button>
-  <button data-view="card"><span class="bi">🃏</span>한자카드</button>
-  <button data-view="quiz"><span class="bi">❓</span>퀴즈</button>
-  <button data-view="review"><span class="bi">🔁</span>복습</button>
-  <button data-view="more"><span class="bi">⋯</span>더보기</button>
+  <button data-view="list">목록</button>
+  <button data-view="card">한자카드</button>
+  <button data-view="quiz">퀴즈</button>
+  <button data-view="review">복습</button>
+  <button data-view="more">더보기</button>
 </nav>
 <div id="guide" class="hide" onclick="if(event.target===this)closeGuide()"></div>
 
