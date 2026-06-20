@@ -146,6 +146,10 @@
   .result-score span{font-size:18px;color:var(--muted);font-weight:600}
   .wronglist{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0 18px}
   .wq{font-family:"Yu Mincho",serif;font-size:24px;background:var(--mark);border-radius:8px;padding:4px 11px;cursor:pointer}
+  .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+  .stat{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 6px}
+  .stat .sv{font-size:24px;font-weight:800;color:var(--accent-d)}
+  .stat .sl{font-size:11px;color:var(--muted);margin-top:3px}
 </style>
 </head>
 <body>
@@ -157,6 +161,7 @@
     <button class="mi" data-view="list">📋 목록</button>
     <button class="mi" data-view="card">🃏 카드 학습</button>
     <button class="mi" data-view="quiz">❓ 퀴즈</button>
+    <button class="mi" data-view="stats">📊 통계 · 백업</button>
   </div>
 </div></header>
 
@@ -172,19 +177,21 @@
   <div id="view-detail" class="hide"></div>
   <div id="view-card" class="hide"></div>
   <div id="view-quiz" class="hide"></div>
+  <div id="view-stats" class="hide"></div>
 </div>
 
 <script>
 /*__DATA__*/
 const $=s=>document.querySelector(s);
 const LEVELS=[["ALL","전체"],["N5","N5"],["N4","N4"],["N3","N3"]];
-const STS=[["all","모두"],["fav","즐겨찾기 ★"],["unlearned","미암기"]];
+const STS=[["all","모두"],["fav","즐겨찾기 ★"],["unlearned","미암기"],["wrong","오답 ✗"]];
 let curLevel="ALL", stMode="all";
 
 /* 저장 */
 const store={get(k){try{return new Set(JSON.parse(localStorage.getItem(k)||"[]"))}catch(e){return new Set()}},
   set(k,s){localStorage.setItem(k,JSON.stringify([...s]))}};
-let FAV=store.get("kanji_fav"), LEARNED=store.get("kanji_learned");
+let FAV=store.get("kanji_fav"), LEARNED=store.get("kanji_learned"), WRONG=store.get("kanji_wrong");
+function setWrong(ch,v){v?WRONG.add(ch):WRONG.delete(ch);store.set("kanji_wrong",WRONG);}
 function toggleSet(set,key,ch){set.has(ch)?set.delete(ch):set.add(ch);store.set(key,set);}
 function setLearned(ch,v){v?LEARNED.add(ch):LEARNED.delete(ch);store.set("kanji_learned",LEARNED);}
 
@@ -240,7 +247,7 @@ function verbForms(surface,reading){
 function shortMeaning(k){return k.ko||(k.en[0]||"");}
 function hex(ch){return ch.codePointAt(0).toString(16).padStart(5,"0");}
 function inLevel(k){return curLevel==="ALL"||k.level===curLevel;}
-function stOK(k){return stMode==="all"||(stMode==="fav"&&FAV.has(k.char))||(stMode==="unlearned"&&!LEARNED.has(k.char));}
+function stOK(k){return stMode==="all"||(stMode==="fav"&&FAV.has(k.char))||(stMode==="unlearned"&&!LEARNED.has(k.char))||(stMode==="wrong"&&WRONG.has(k.char));}
 
 /* 필터 UI */
 $("#lvFilters").innerHTML=LEVELS.map(([v,l])=>`<button class="chip ${v==='ALL'?'active':''}" data-lv="${v}">${l}</button>`).join("");
@@ -359,7 +366,6 @@ function renderCard(){
         <p class="ko">${k.ko}</p>
         <p class="rdg"><span class="rl on">음</span> <span class="rv">${onJoin(k)}</span>${k.on.length?`<button class="spk" onclick="event.stopPropagation();speak('${k2h(k.on[0])}')">🔊</button>`:""}</p>
         <p class="rdg"><span class="rl kun">훈</span> <span class="rv">${kunJoinCard(k)}</span>${k.kun.length?`<button class="spk" onclick="event.stopPropagation();speak('${readSpeak(k.kun[0])}')">🔊</button>`:""}</p>
-        <p class="en">${k.en.join(", ")}</p>
       </div>
     </div></div>
     <div class="fcbtns">
@@ -368,7 +374,7 @@ function renderCard(){
     </div>`;
 }
 function cardGo(d){cardIdx=Math.max(0,cardIdx+d);cardFlip=false;renderCard();}
-function cardJudge(known){const k=cardDeck[cardIdx];setLearned(k.char,known);cardIdx++;cardFlip=false;renderCard();}
+function cardJudge(known){const k=cardDeck[cardIdx];setLearned(k.char,known);setWrong(k.char,!known);recordStudy(1);cardIdx++;cardFlip=false;renderCard();}
 
 /* 퀴즈 */
 let quizType="kanji";
@@ -416,7 +422,10 @@ function renderQuiz(){
         return `<div class="${cls}" ${done?"":`onclick="quizAnswer(${i})"`}>${o.label}</div>`;}).join("")}</div>
       <div class="score">${done?(it.opts[it.answered].correct?"⭕ 정답":"❌ 오답"):"정답을 고르세요"} · 맞힘 ${quizCorrect()} / ${quizItems.length}</div></div>`;
 }
-function quizAnswer(i){const it=quizItems[quizIdx];if(it.answered!=null)return;it.answered=i;renderQuiz();}
+function quizAnswer(i){const it=quizItems[quizIdx];if(it.answered!=null)return;it.answered=i;
+  const ok=it.opts[i].correct;recordQuiz(ok);
+  if(it.kind==="kanji")setWrong(it.char,!ok);  /* 오답 노트(한자) */
+  renderQuiz();}
 function quizGo(d){quizIdx=Math.max(0,quizIdx+d);renderQuiz();}
 function renderQuizResult(){
   const total=quizItems.length,correct=quizCorrect(),pct=total?Math.round(correct/total*100):0;
@@ -430,12 +439,13 @@ function renderQuizResult(){
 
 /* 뷰 전환 */
 function setView(v){
-  ["list","detail","card","quiz"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));
-  $("#vtitle").textContent=v==="card"?" · 카드":v==="quiz"?" · 퀴즈":"";
+  ["list","detail","card","quiz","stats"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));
+  $("#vtitle").textContent=v==="card"?" · 카드":v==="quiz"?" · 퀴즈":v==="stats"?" · 통계":"";
   closeMenu();
   if(v==="list")renderList($("#search").value);
   if(v==="card")openSetup("card");
   if(v==="quiz")openSetup("quiz");
+  if(v==="stats")statsScreen();
 }
 /* 메뉴 */
 function closeMenu(){$("#menu").classList.add("hide");}
@@ -455,6 +465,49 @@ document.addEventListener("keydown",e=>{
   else if(!$("#view-quiz").classList.contains("hide")&&quizItems.length)quizGo(d);
 });
 renderList();
+
+/* 통계 (localStorage 기록) */
+function todayKey(d){d=d||new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+function loadStats(){let s;try{s=JSON.parse(localStorage.getItem("kanji_stats"));}catch(e){}
+  if(!s||typeof s!=="object")s={};s.days=s.days||{};s.streak=s.streak||0;s.totalQuizQ=s.totalQuizQ||0;s.totalQuizCorrect=s.totalQuizCorrect||0;return s;}
+function saveStats(s){localStorage.setItem("kanji_stats",JSON.stringify(s));}
+function bumpStreak(s){const t=todayKey();if(s.lastDate===t)return;const y=new Date();y.setDate(y.getDate()-1);
+  s.streak=(s.lastDate===todayKey(y))?s.streak+1:1;s.lastDate=t;}
+function dayRec(s){const t=todayKey();s.days[t]=s.days[t]||{studied:0,quizQ:0,quizCorrect:0};return s.days[t];}
+function recordStudy(n){const s=loadStats();bumpStreak(s);dayRec(s).studied+=n||1;saveStats(s);}
+function recordQuiz(ok){const s=loadStats();bumpStreak(s);const d=dayRec(s);d.quizQ++;if(ok)d.quizCorrect++;
+  s.totalQuizQ++;if(ok)s.totalQuizCorrect++;saveStats(s);}
+function statsScreen(){
+  const s=loadStats(),acc=s.totalQuizQ?Math.round(s.totalQuizCorrect/s.totalQuizQ*100):0;
+  const td=s.days[todayKey()]||{studied:0,quizQ:0,quizCorrect:0};
+  const stat=(v,l)=>`<div class="stat"><div class="sv">${v}</div><div class="sl">${l}</div></div>`;
+  $("#view-stats").innerHTML=`<div class="setup">
+    <h2 class="setup-h">📊 학습 통계</h2>
+    <div class="stats-grid">
+      ${stat("🔥 "+s.streak,"연속 학습일")}${stat(td.studied,"오늘 학습")}${stat(LEARNED.size,"외운 한자")}
+      ${stat(acc+"%","퀴즈 정답률")}${stat(WRONG.size,"복습 필요(오답)")}${stat(s.totalQuizQ,"총 푼 문제")}
+    </div>
+    <div class="slabel" style="margin-top:24px">진도 백업 · 복원 (기기 변경/캐시 삭제 대비)</div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="navb" onclick="exportData()">⬇️ 내보내기</button>
+      <button class="navb" onclick="$('#importFile').click()">⬆️ 가져오기</button>
+    </div>
+    <input type="file" id="importFile" accept="application/json" class="hide" onchange="if(this.files[0])importData(this.files[0])">
+    ${WRONG.size?`<div style="margin-top:18px"><button class="startbtn" onclick="stMode='wrong';curLevel='ALL';openSetup('card');setView('card')">오답 ${WRONG.size}개 복습 ▶</button></div>`:""}
+  </div>`;
+}
+/* 진도 백업: 내보내기 / 가져오기 */
+const BK_KEYS=["kanji_fav","kanji_learned","kanji_wrong","kanji_stats","kanji_theme"];
+function exportData(){const data={};BK_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!=null)data[k]=v;});
+  const blob=new Blob([JSON.stringify({app:"kanji-jlpt-study",exported:new Date().toISOString(),data:data},null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="kanji-progress-"+todayKey()+".json";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+function importData(file){const r=new FileReader();
+  r.onload=()=>{try{const j=JSON.parse(r.result),d=j.data||j;let n=0;
+    Object.keys(d).forEach(k=>{if(k.indexOf("kanji_")===0){localStorage.setItem(k,d[k]);n++;}});
+    if(!n)throw 0;alert("가져오기 완료! 앱을 새로고침합니다.");location.reload();}
+    catch(e){alert("가져오기 실패: 올바른 백업 파일이 아닙니다.");}};
+  r.readAsText(file);}
 
 /* PWA: 서비스워커 등록 (오프라인 + 홈화면 설치) */
 if("serviceWorker" in navigator){
