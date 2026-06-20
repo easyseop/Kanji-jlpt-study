@@ -59,7 +59,10 @@
   .title{font-size:25px;font-weight:800;margin:2px 0;text-align:center}
   .stroke{text-align:center;margin:8px 0}
   .stroke svg{width:170px;height:170px}
-  .stroke svg path{stroke:var(--ink)!important}
+  .stroke svg path{stroke:var(--ink)!important;fill:none}
+  .stroke svg text{display:none}
+  .bigspk{border:none;background:var(--mark);border-radius:50%;width:96px;height:96px;font-size:44px;cursor:pointer;color:var(--ink)}
+  .bigspk:active{background:var(--accent);color:#fff}
   .bigk{font-size:120px;line-height:1.05;text-align:center;font-family:"Yu Mincho","Hiragino Mincho ProN",serif;margin:6px 0}
   .meta{text-align:center;color:var(--muted);font-size:13px;margin-bottom:6px}
   .actions{display:flex;gap:8px;justify-content:center;margin:10px 0 4px;flex-wrap:wrap}
@@ -150,6 +153,11 @@
   .stat{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 6px}
   .stat .sv{font-size:24px;font-weight:800;color:var(--accent-d)}
   .stat .sl{font-size:11px;color:var(--muted);margin-top:3px}
+  .voclist{list-style:none;padding:0;margin:10px 0}
+  .voclist li{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 34px 10px 12px;margin:7px 0;cursor:pointer;position:relative}
+  .voclist li:hover{border-color:var(--accent)}
+  .voclist li .wd{margin:0}
+  .vlv{position:absolute;top:8px;right:10px;font-size:10px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -161,6 +169,7 @@
     <button class="mi" data-view="list">📋 목록</button>
     <button class="mi" data-view="card">🃏 카드 학습</button>
     <button class="mi" data-view="quiz">❓ 퀴즈</button>
+    <button class="mi" data-view="vocab">📖 단어장</button>
     <button class="mi" data-view="stats">📊 통계 · 백업</button>
   </div>
 </div></header>
@@ -177,6 +186,7 @@
   <div id="view-detail" class="hide"></div>
   <div id="view-card" class="hide"></div>
   <div id="view-quiz" class="hide"></div>
+  <div id="view-vocab" class="hide"></div>
   <div id="view-stats" class="hide"></div>
 </div>
 
@@ -292,6 +302,7 @@ function showDetail(char){
     </div>
     <div class="title">「${k.char}」 <button class="spk" onclick="speak('${k.char}')">🔊</button></div>
     <div class="stroke" id="stroke"><div class="bigk">${k.char}</div></div>
+    <div style="text-align:center;margin:2px 0 4px"><button class="navb" onclick="animateStroke()">✍️ 획순 애니메이션</button></div>
     <div class="meta">JLPT ${k.level} · ${k.strokes}획</div>
     <div class="actions">
       <button class="btn fav ${FAV.has(char)?'on':''}" id="bFav">★ 즐겨찾기</button>
@@ -316,7 +327,14 @@ function showDetail(char){
   loadStroke(char);window.scrollTo(0,0);
 }
 function loadStroke(char){fetch(`https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji/${hex(char)}.svg`)
-  .then(r=>r.ok?r.text():Promise.reject()).then(svg=>{const el=$("#stroke");if(el)el.innerHTML=svg;}).catch(()=>{});}
+  .then(r=>r.ok?r.text():Promise.reject()).then(svg=>{const el=$("#stroke");if(el){el.innerHTML=svg;setTimeout(animateStroke,150);}}).catch(()=>{});}
+function animateStroke(){const svg=document.querySelector("#stroke svg");if(!svg)return;
+  const paths=[...svg.querySelectorAll("path")];let delay=0;
+  paths.forEach(p=>{let len;try{len=p.getTotalLength();}catch(e){len=120;}
+    p.style.transition="none";p.style.strokeDasharray=len;p.style.strokeDashoffset=len;
+    p.getBoundingClientRect();
+    const dur=Math.max(.25,Math.min(1.1,len/130));
+    p.style.transition=`stroke-dashoffset ${dur}s linear ${delay}s`;p.style.strokeDashoffset=0;delay+=dur;});}
 
 /* 세션 공통: 레벨·범위·개수 선택 */
 const COUNTS=[[10,"10개"],[20,"20개"],[30,"30개"],[0,"전체"]];
@@ -378,7 +396,7 @@ function cardJudge(known){const k=cardDeck[cardIdx];setLearned(k.char,known);set
 
 /* 퀴즈 */
 let quizType="kanji";
-const QTYPES=[["kanji","한자"],["word","단어"]];
+const QTYPES=[["kanji","한자"],["word","단어"],["listen","듣기 🔊"]];
 function quizPool(){return KANJI.filter(k=>inLevel(k)&&stOK(k));}
 /* 현재 필터의 한자들에서 대표단어를 모아 단어 풀 생성 */
 function wordPool(){const seen={},out=[];
@@ -396,6 +414,14 @@ function startQuizSession(){
       const others=shuffle(pool.filter(w=>w.ko!==c.ko&&w.read!==c.read).slice()).slice(0,3);
       const opts=shuffle([c,...others].map(o=>({correct:o===c,label:ask?o.ko:`<span class="jp">${o.read}</span>`})));
       quizItems.push({kind:"word",word:c.word,read:c.read,ask:ask,opts:opts,answered:null});}
+  }else if(quizType==="listen"){
+    let pool=shuffle(KANJI.filter(k=>inLevel(k)&&stOK(k)&&(k.on.length||k.kun.length)).slice());if(pool.length<4){openSetup("quiz");return;}
+    const take=sessCount>0?Math.min(sessCount,pool.length):pool.length;
+    for(let i=0;i<take;i++){const c=pool[i];
+      const say=c.on.length?k2h(c.on[0]):readSpeak(c.kun[0]);
+      const others=shuffle(KANJI.filter(k=>k!==c).slice()).slice(0,3);
+      const opts=shuffle([c,...others].map(o=>({correct:o===c,label:`<span class="jp" style="font-size:30px">${o.char}</span>`})));
+      quizItems.push({kind:"listen",char:c.char,say:say,opts:opts,answered:null});}
   }else{
     let pool=shuffle(KANJI.filter(k=>inLevel(k)&&stOK(k)).slice());if(pool.length<1){openSetup("quiz");return;}
     const take=sessCount>0?Math.min(sessCount,pool.length):pool.length;
@@ -410,21 +436,26 @@ function quizCorrect(){return quizItems.filter(it=>it.answered!=null&&it.opts[it
 function renderQuiz(){
   if(quizIdx>=quizItems.length)return renderQuizResult();
   const it=quizItems[quizIdx],done=it.answered!=null;
-  const prompt=it.kind==="word"?(it.ask?"이 단어의 뜻은?":"이 단어의 읽기는?"):(it.ask?"이 한자의 뜻은?":"이 한자의 읽기는?");
-  const q=it.kind==="word"?`<div class="q qw">${it.word}</div>`:`<div class="q">${it.char}</div>`;
-  const say=it.kind==="word"?it.read:it.char;
+  const prompt=it.kind==="word"?(it.ask?"이 단어의 뜻은?":"이 단어의 읽기는?")
+    :it.kind==="listen"?"🔊 들리는 읽기의 한자는?":(it.ask?"이 한자의 뜻은?":"이 한자의 읽기는?");
+  const say=it.kind==="word"?it.read:it.kind==="listen"?it.say:it.char;
+  const q=it.kind==="word"?`<div class="q qw">${it.word}</div>`
+    :it.kind==="listen"?`<div class="q"><button class="bigspk" onclick="speak('${say}')">🔊</button></div>`
+    :`<div class="q">${it.char}</div>`;
+  const spkBtn=it.kind==="listen"?"":` <button class="spk" onclick="speak('${say}')">🔊</button>`;
   $("#view-quiz").innerHTML=`
     <div class="snav"><button class="navb" ${quizIdx?'':'disabled'} onclick="quizGo(-1)">◀ 이전</button>
       <span class="snum">${quizIdx+1} / ${quizItems.length}</span>
       <button class="navb" onclick="quizGo(1)">${quizIdx===quizItems.length-1?'결과 ▶':'다음 ▶'}</button></div>
-    <div class="quiz"><div class="prompt">${prompt} <button class="spk" onclick="speak('${say}')">🔊</button></div>${q}
+    <div class="quiz"><div class="prompt">${prompt}${spkBtn}</div>${q}
       <div class="opts">${it.opts.map((o,i)=>{let cls="opt";if(done){if(o.correct)cls+=" ok";else if(i===it.answered)cls+=" no";}
         return `<div class="${cls}" ${done?"":`onclick="quizAnswer(${i})"`}>${o.label}</div>`;}).join("")}</div>
       <div class="score">${done?(it.opts[it.answered].correct?"⭕ 정답":"❌ 오답"):"정답을 고르세요"} · 맞힘 ${quizCorrect()} / ${quizItems.length}</div></div>`;
+  if(it.kind==="listen"&&!done)setTimeout(()=>speak(say),250);
 }
 function quizAnswer(i){const it=quizItems[quizIdx];if(it.answered!=null)return;it.answered=i;
   const ok=it.opts[i].correct;recordQuiz(ok);
-  if(it.kind==="kanji")setWrong(it.char,!ok);  /* 오답 노트(한자) */
+  if(it.char)setWrong(it.char,!ok);  /* 오답 노트(한자·듣기) */
   renderQuiz();}
 function quizGo(d){quizIdx=Math.max(0,quizIdx+d);renderQuiz();}
 function renderQuizResult(){
@@ -439,13 +470,14 @@ function renderQuizResult(){
 
 /* 뷰 전환 */
 function setView(v){
-  ["list","detail","card","quiz","stats"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));
-  $("#vtitle").textContent=v==="card"?" · 카드":v==="quiz"?" · 퀴즈":v==="stats"?" · 통계":"";
+  ["list","detail","card","quiz","stats","vocab"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));
+  $("#vtitle").textContent=v==="card"?" · 카드":v==="quiz"?" · 퀴즈":v==="stats"?" · 통계":v==="vocab"?" · 단어장":"";
   closeMenu();
   if(v==="list")renderList($("#search").value);
   if(v==="card")openSetup("card");
   if(v==="quiz")openSetup("quiz");
   if(v==="stats")statsScreen();
+  if(v==="vocab")vocabScreen();
 }
 /* 메뉴 */
 function closeMenu(){$("#menu").classList.add("hide");}
@@ -508,6 +540,27 @@ function importData(file){const r=new FileReader();
     if(!n)throw 0;alert("가져오기 완료! 앱을 새로고침합니다.");location.reload();}
     catch(e){alert("가져오기 실패: 올바른 백업 파일이 아닙니다.");}};
   r.readAsText(file);}
+
+/* 단어장 모드 */
+let allWords=null,vocabLevel="ALL",vocabQ="";
+function buildWords(){if(allWords)return allWords;const seen={},out=[];
+  KANJI.forEach(k=>(k.onWords||[]).concat(k.kunWords||[]).forEach(g=>(g.words||[]).forEach(w=>{
+    const word=w[0]+w[2],read=k2h(w[1])+k2h(w[3]),key=word+"|"+read;
+    if(!seen[key]){seen[key]=1;out.push({word:word,read:read,ko:w[4],level:k.level,kanji:k.char,html:wordHTML(w)});}})));
+  allWords=out;return out;}
+function vocabFilter(){const f=vocabQ.trim().toLowerCase();
+  return buildWords().filter(w=>(vocabLevel==="ALL"||w.level===vocabLevel)&&(!f||w.word.includes(f)||w.read.includes(f)||w.ko.toLowerCase().includes(f)));}
+function renderVocabList(){const list=vocabFilter();
+  $("#voclistwrap").innerHTML=`<div class="count">${list.length}개 단어</div>
+    <ul class="voclist">${list.slice(0,400).map(w=>`<li onclick="showDetail('${w.kanji}')">${w.html}<span class="vlv">${w.level}</span></li>`).join("")||'<p class="empty">결과가 없습니다.</p>'}</ul>
+    ${list.length>400?'<p class="count">상위 400개만 표시 — 검색으로 좁혀보세요</p>':''}`;}
+function vocabScreen(){
+  $("#view-vocab").innerHTML=`${chipRow(LEVELS,vocabLevel,'setVocabLevel')}
+    <input class="search" id="vsearch" placeholder="단어 · 읽기 · 뜻 검색" value="${vocabQ.replace(/"/g,'&quot;')}">
+    <div id="voclistwrap"></div>`;
+  $("#vsearch").addEventListener("input",e=>{vocabQ=e.target.value;renderVocabList();});
+  renderVocabList();}
+function setVocabLevel(v){vocabLevel=v;vocabScreen();}
 
 /* PWA: 서비스워커 등록 (오프라인 + 홈화면 설치) */
 if("serviceWorker" in navigator){
