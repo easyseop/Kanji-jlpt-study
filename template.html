@@ -77,6 +77,7 @@
   .ko{margin-left:6px}
   .note{color:var(--ink);opacity:.85}
   .jp{font-family:"Yu Mincho","Hiragino Mincho ProN",serif;font-size:19px}
+  .conj{font-family:inherit;font-size:12.5px;color:var(--accent-d);white-space:nowrap}
   .spk{cursor:pointer;border:none;background:none;font-size:15px;opacity:.55;margin-left:4px}
   .spk:hover{opacity:1}
   .en{color:var(--muted);font-size:13px}
@@ -166,11 +167,37 @@ function speak(t){try{speechSynthesis.cancel();const u=new SpeechSynthesisUttera
 
 /* helpers */
 function ruby(b,r){return r?`<ruby>${b}<rt>${r}</rt></ruby>`:b;}
-function wordHTML(w){return `<span class="jp">${ruby(w[0],w[1])}${ruby(w[2],w[3])}</span> <span class="ko">${w[4]}</span>`;}
+function wordHTML(w){
+  const surface=w[0]+w[2],vf=verbForms(surface,k2h(w[1])+k2h(w[3]));
+  const conj=vf?` <span class="conj">て ${vf.te} · た ${vf.ta}</span>`:"";
+  return `<span class="jp">${ruby(w[0],k2h(w[1]))}${ruby(w[2],k2h(w[3]))}</span> <span class="ko">${w[4]}</span>${conj}`;}
 /* 음독 가타카나 → 히라가나 표시용 변환 */
 function k2h(s){return (s||"").replace(/[ァ-ヶ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0x60);});}
 function onJoin(k){return k.on.map(k2h).join("、")||"—";}
 function readSpeak(r){return k2h(r).replace(/\..*/,"");}  /* 히라가나 + 오쿠리가나(점) 제거 */
+/* 동사 활용: 표제(surface)가 う단 히라가나 오쿠리가나로 끝나면 동사로 보고 て형/た형 생성 */
+const URO=/[うくぐすつぬぶむる]/;
+const IEROW=/[いきしちにひみりゐぎじぢびぴえけせてねへめれゑげぜでべぺ]/;  /* い·え단(1단 판정) */
+const GODAN_EXC=new Set(["かえる","はいる","はしる","しる","きる","いる","へる","しゃべる","ける","まいる","かぎる","にぎる","すべる","ちる","てる","あせる","ねじる"]);
+function isHira(c){return c>="ぁ"&&c<="ゖ";}
+function verbForms(surface,reading){
+  const lc=surface[surface.length-1];
+  if(!surface.endsWith("する")&&!(isHira(lc)&&URO.test(lc)))return null;  /* 동사 신호 없음 */
+  if(reading.length>=2&&reading.endsWith("する"))return {te:surface.slice(0,-2)+"して",ta:surface.slice(0,-2)+"した"};
+  if(reading==="くる")return {te:surface.slice(0,-1)+"て",ta:surface.slice(0,-1)+"た"};  /* 来る→来て */
+  const last=reading[reading.length-1];
+  if(!URO.test(last))return null;
+  let drop=1,teSuf,taSuf;
+  if(last==="る"&&IEROW.test(reading[reading.length-2]||"")&&!GODAN_EXC.has(reading)){teSuf="て";taSuf="た";}  /* 1단 */
+  else if(reading==="いく"){teSuf="って";taSuf="った";}  /* 行く 예외 */
+  else if("うつる".indexOf(last)>=0){teSuf="って";taSuf="った";}
+  else if("ぬぶむ".indexOf(last)>=0){teSuf="んで";taSuf="んだ";}
+  else if(last==="く"){teSuf="いて";taSuf="いた";}
+  else if(last==="ぐ"){teSuf="いで";taSuf="いだ";}
+  else if(last==="す"){teSuf="して";taSuf="した";}
+  else return null;
+  return {te:surface.slice(0,surface.length-drop)+teSuf,ta:surface.slice(0,surface.length-drop)+taSuf};
+}
 function shortMeaning(k){return k.ko||(k.en[0]||"");}
 function hex(ch){return ch.codePointAt(0).toString(16).padStart(5,"0");}
 function inLevel(k){return curLevel==="ALL"||k.level===curLevel;}
