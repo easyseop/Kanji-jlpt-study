@@ -48,7 +48,8 @@
   .cell.learned{border-color:var(--ok)}
   .cell .k{font-size:34px;font-family:"Yu Mincho","Hiragino Mincho ProN",serif}
   .cell .m{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .cell .lv{position:absolute;top:6px;left:7px;font-size:9px;color:var(--muted);opacity:.7}
+  .cell .no{position:absolute;top:5px;left:7px;font-size:10px;color:var(--accent-d);font-weight:700}
+  .cell .lv{position:absolute;bottom:4px;left:7px;font-size:9px;color:var(--muted);opacity:.7}
   .cell .fav{position:absolute;top:3px;right:5px;font-size:14px;color:var(--line);cursor:pointer;line-height:1}
   .cell .fav.on{color:var(--gold)}
   .cell .chk{position:absolute;bottom:4px;right:6px;font-size:11px;color:var(--ok);opacity:0}
@@ -198,7 +199,7 @@
   <h1>🇯🇵 한자 공부<span id="vtitle"></span></h1>
   <button class="ic" id="theme" title="다크 모드">🌙</button>
   <div class="menu hide" id="menu">
-    <button class="mi" data-view="list">📋 목록</button>
+    <button class="mi" data-view="list">📋 한자목록</button>
     <button class="mi" data-view="card">🃏 카드 학습</button>
     <button class="mi" data-view="quiz">❓ 퀴즈</button>
     <button class="mi" data-view="vocab">📖 단어장</button>
@@ -309,11 +310,12 @@ function updateProgress(){const pool=KANJI.filter(inLevel);const done=pool.filte
   const pct=pool.length?Math.round(done/pool.length*100):0;
   $("#progress").innerHTML=`암기 진도 (${curLevel==="ALL"?"전체":curLevel}) · ${done} / ${pool.length} (${pct}%)<div class="bar"><i style="width:${pct}%"></i></div>`;}
 function renderList(f=""){const list=filtered(f);curView=list;updateProgress();$("#count").textContent=`${list.length}자`;
-  $("#grid").innerHTML=list.length?list.map(k=>`
+  $("#grid").innerHTML=list.length?list.map((k,i)=>`
     <div class="cell ${LEARNED.has(k.char)?'learned':''}" onclick="showDetail('${k.char}')">
-      <span class="lv">${k.level}</span>
+      <span class="no">${i+1}.</span>
       <span class="fav ${FAV.has(k.char)?'on':''}" onclick="event.stopPropagation();favCell('${k.char}',this)">★</span>
-      <div class="k">${k.char}</div><div class="m">${shortMeaning(k)}</div><span class="chk">✓</span>
+      <div class="k">${k.char}</div><div class="m">${shortMeaning(k)}</div>
+      <span class="lv">${k.level}</span><span class="chk">✓</span>
     </div>`).join(""):`<p class="empty">조건에 맞는 한자가 없습니다.</p>`;}
 function favCell(ch,el){toggleSet(FAV,"kanji_fav",ch);el.classList.toggle("on",FAV.has(ch));if(stMode==="fav")renderList($("#search").value);}
 
@@ -326,7 +328,7 @@ function showDetail(char){
   setView("detail");
   $("#view-detail").innerHTML=`
     <div class="nav">
-      <a onclick="setView('list')">← 목록</a>
+      <a onclick="setView('list')">← 한자목록</a>
       <span>
         <a class="${prev?'':'dim'}" ${prev?`onclick="showDetail('${prev}')"`:''}>◀ 이전</a>
         &nbsp;&nbsp;
