@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>일본어 한자 공부 · N5 N4 N3</title>
+<meta name="description" content="JLPT N5·N4·N3 한자 612자 학습 앱">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#8b7fc4">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="한자공부">
 <style>
   :root{--accent:#8b7fc4;--accent-d:#6b5fae;--line:#e6e3f0;--bg:#f4f4f6;
         --card:#fff;--ink:#222;--muted:#777;--mark:#e9e6f3;--gold:#e8b53d;--ok:#5bbb72;}
@@ -300,6 +308,13 @@ document.addEventListener("keydown",e=>{
   if(e.key==="ArrowRight"&&a[2]&&!a[2].classList.contains("dim"))a[2].click();
 });
 renderList();
+
+/* PWA: 서비스워커 등록 (오프라인 + 홈화면 설치) */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  });
+}
 </script>
 </body>
 </html>

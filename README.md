@@ -10,6 +10,7 @@ JLPT **N5(79) · N4(166) · N3(367) = 612자**를 담은 일본어 한자 학습
 - **퀴즈**: 4지선다(뜻/읽기), 필터별 출제
 - **학습 진도**: 즐겨찾기·암기 체크를 브라우저(localStorage)에 저장 · 진도바
 - **발음 듣기**(TTS, ja-JP) · **다크 모드**
+- **PWA**: 홈 화면에 설치 가능 · 오프라인 동작(한 번 본 화면/획순은 캐시되어 인터넷 없어도 열림)
 
 ## 바로 보기 / 배포
 - 로컬: `index.html` 더블클릭
@@ -31,7 +32,9 @@ python3 build.py   # facts.json + ko.py(훈음) + rich.py(상세) -> index.html
 - `rich.py` : 어원 해설 + 대표단어 상세 (612자 전체 완료)
 - `tips.py` : 한자별 암기 꿀팁(연상법)
 - `facts.json` : 공개 데이터에서 추출한 읽기/획수/등급/영어뜻
-- `template.html` : UI 템플릿(`/*__DATA__*/` 자리에 데이터 주입)
+- `template.html` : UI 템플릿(`/*__DATA__*/` 자리에 데이터 주입). PWA용 manifest/아이콘 링크와 서비스워커 등록 포함
+- `manifest.webmanifest` / `sw.js` : PWA 설정(설치 정보)·서비스워커(오프라인 캐시). **앱을 고치면 `sw.js`의 `CACHE` 버전을 올려야** 사용자에게 갱신이 반영됨
+- `make_icons.py` : PWA 아이콘(`icon-192/512`, `icon-maskable-512`, `apple-touch-icon`) 생성. `pip install Pillow` 후 `python3 make_icons.py`
 
 ## 진행 현황
 - [x] 612자 기본 정보(음/훈/획수/훈음/영어뜻)
