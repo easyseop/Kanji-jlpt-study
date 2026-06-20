@@ -405,7 +405,7 @@ ul{margin:12px 0;padding-left:0;list-style:none}
 </div>
 <nav class="bnav" id="bnav">
   <button data-view="list"><span class="bi">📋</span>목록</button>
-  <button data-view="card"><span class="bi">🃏</span>카드</button>
+  <button data-view="card"><span class="bi">🃏</span>한자카드</button>
   <button data-view="quiz"><span class="bi">❓</span>퀴즈</button>
   <button data-view="review"><span class="bi">🔁</span>복습</button>
   <button data-view="more"><span class="bi">⋯</span>더보기</button>
@@ -570,7 +570,7 @@ function renderSetup(){
   const isQuiz=setupKind==="quiz",el=isQuiz?$("#view-quiz"):$("#view-card");
   const avail=sessionPool().length,n=sessCount===0?avail:Math.min(sessCount,avail);
   el.innerHTML=`<div class="setup">
-    <h2 class="setup-h">${isQuiz?"❓ 퀴즈 설정":"🃏 카드 학습 설정"}</h2>
+    <h2 class="setup-h">${isQuiz?"❓ 퀴즈 설정":"🃏 한자카드 설정"}</h2>
     ${isQuiz?`<div class="slabel">유형</div>${chipRow(QTYPES,quizType,'setQType')}`:""}
     <div class="slabel">레벨</div>${chipRow(LEVELS,curLevel,'setSLevel')}
     <div class="slabel">범위</div>${chipRow(STS,stMode,'setSMode')}
@@ -694,7 +694,7 @@ function renderQuizResult(){
 /* 뷰 전환 (하단 탭바) */
 function setView(v){
   ["list","detail","card","quiz","review","stats","vocab","more"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));
-  $("#vtitle").textContent=v==="card"?" · 카드":v==="quiz"?" · 퀴즈":v==="review"?" · 오늘의 복습":v==="stats"?" · 통계":v==="vocab"?" · 단어장":v==="more"?" · 더보기":"";
+  $("#vtitle").textContent=v==="card"?" · 한자카드":v==="quiz"?" · 퀴즈":v==="review"?" · 오늘의 복습":v==="stats"?" · 통계":v==="vocab"?" · 단어장":v==="more"?" · 더보기":"";
   /* 하단 탭 활성: 단어장·통계·더보기 → '더보기' 탭, 상세 → '목록' 탭 */
   const tabFor=(v==="vocab"||v==="stats"||v==="more")?"more":(v==="detail"?"list":v);
   document.querySelectorAll("#bnav button").forEach(b=>b.classList.toggle("active",b.dataset.view===tabFor));
