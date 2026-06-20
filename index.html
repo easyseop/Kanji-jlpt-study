@@ -275,10 +275,10 @@ function showDetail(char){
       ${rich?k.shape.map(s=>`<p class="note">${s}</p>`).join(""):`<div class="todo">이 한자의 어원 해설은 준비 중입니다.</div>`}
       ${k.tip?`<div class="tip">💡 <b>암기 꿀팁</b> · ${k.tip}</div>`:""}</div>
     <div class="sec"><h2>3. 음독 상세</h2>
-      <p class="note">음독은 <span class="jp">${onJoin(k)}</span>입니다. ${rich?(k.onNote||""):""}</p>
+      <p class="note">음독은 <span class="jp">${onJoin(k)}</span>입니다. ${rich?k2h(k.onNote||""):""}</p>
       ${rich&&k.onWords.length?`<div class="sub">음독 대표단어</div><ul>${wordsBlock(k.onWords)}</ul>`:`<div class="todo">대표단어는 준비 중입니다.</div>`}</div>
     <div class="sec"><h2>4. 훈독 상세</h2>
-      <p class="note">훈독은 <span class="jp">${kunJoin(k)}</span>입니다. ${rich?(k.kunNote||""):""}</p>
+      <p class="note">훈독은 <span class="jp">${kunJoin(k)}</span>입니다. ${rich?k2h(k.kunNote||""):""}</p>
       ${rich&&k.kunWords.length?`<div class="sub">훈독 대표단어</div><ul>${wordsBlock(k.kunWords)}</ul>`:`<div class="todo">대표단어는 준비 중입니다.</div>`}</div>`;
   $("#bFav").onclick=e=>{toggleSet(FAV,"kanji_fav",char);e.target.classList.toggle("on",FAV.has(char));};
   $("#bChk").onclick=e=>{toggleSet(LEARNED,"kanji_learned",char);e.target.classList.toggle("on",LEARNED.has(char));};
