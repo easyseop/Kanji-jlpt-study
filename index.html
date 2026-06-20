@@ -158,6 +158,8 @@
   .voclist li:hover{border-color:var(--accent)}
   .voclist li .wd{margin:0}
   .vlv{position:absolute;top:8px;right:10px;font-size:10px;color:var(--muted)}
+  .masked{background:var(--mark);color:transparent;border-radius:5px;cursor:pointer;padding:0 6px}
+  .masked.reveal{background:none;color:inherit;padding:0}
 </style>
 </head>
 <body>
@@ -542,25 +544,50 @@ function importData(file){const r=new FileReader();
   r.readAsText(file);}
 
 /* 단어장 모드 */
-let allWords=null,vocabLevel="ALL",vocabQ="";
+const POS=[["all","전체"],["verb","동사"],["other","그 외"]];
+const SORTS=[["level","레벨순"],["read","읽기순"],["len","글자순"]];
+let allWords=null,vocabLevel="ALL",vocabQ="",vocabPos="all",vocabSort="level",vocabHide=false;
 function buildWords(){if(allWords)return allWords;const seen={},out=[];
   KANJI.forEach(k=>(k.onWords||[]).concat(k.kunWords||[]).forEach(g=>(g.words||[]).forEach(w=>{
     const word=w[0]+w[2],read=k2h(w[1])+k2h(w[3]),key=word+"|"+read;
-    if(!seen[key]){seen[key]=1;out.push({word:word,read:read,ko:w[4],level:k.level,kanji:k.char,html:wordHTML(w)});}})));
+    if(!seen[key]){seen[key]=1;const vf=verbForms(word,read);
+      out.push({w:w,word:word,read:read,ko:w[4],level:k.level,kanji:k.char,verb:!!vf,vf:vf});}})));
   allWords=out;return out;}
 function vocabFilter(){const f=vocabQ.trim().toLowerCase();
-  return buildWords().filter(w=>(vocabLevel==="ALL"||w.level===vocabLevel)&&(!f||w.word.includes(f)||w.read.includes(f)||w.ko.toLowerCase().includes(f)));}
+  let list=buildWords().filter(x=>(vocabLevel==="ALL"||x.level===vocabLevel)
+    &&(vocabPos==="all"||(vocabPos==="verb"&&x.verb)||(vocabPos==="other"&&!x.verb))
+    &&(!f||x.word.includes(f)||x.read.includes(f)||x.ko.toLowerCase().includes(f)));
+  const lo={N5:0,N4:1,N3:2};
+  if(vocabSort==="read")list=list.slice().sort((a,b)=>a.read.localeCompare(b.read,"ja"));
+  else if(vocabSort==="len")list=list.slice().sort((a,b)=>a.word.length-b.word.length||a.read.localeCompare(b.read,"ja"));
+  else list=list.slice().sort((a,b)=>lo[a.level]-lo[b.level]);
+  return list;}
+function vocabRow(x){
+  const jp=ruby(x.w[0],k2h(x.w[1]))+ruby(x.w[2],k2h(x.w[3]));
+  const conj=x.vf?`<div class="conj"><span class="cl">て</span>${x.vf.te}　<span class="cl">た</span>${x.vf.ta}</div>`:"";
+  const ko=vocabHide?`<span class="ko masked" onclick="event.stopPropagation();this.classList.toggle('reveal')">${x.ko}</span>`
+    :`<span class="ko">${x.ko}</span>`;
+  return `<li onclick="showDetail('${x.kanji}')">
+    <span class="jp">${jp}</span> ${ko}
+    <button class="spk" onclick="event.stopPropagation();speak('${x.read}')">🔊</button>
+    ${conj}<span class="vlv">${x.level}</span></li>`;}
 function renderVocabList(){const list=vocabFilter();
   $("#voclistwrap").innerHTML=`<div class="count">${list.length}개 단어</div>
-    <ul class="voclist">${list.slice(0,400).map(w=>`<li onclick="showDetail('${w.kanji}')">${w.html}<span class="vlv">${w.level}</span></li>`).join("")||'<p class="empty">결과가 없습니다.</p>'}</ul>
+    <ul class="voclist">${list.slice(0,400).map(vocabRow).join("")||'<p class="empty">결과가 없습니다.</p>'}</ul>
     ${list.length>400?'<p class="count">상위 400개만 표시 — 검색으로 좁혀보세요</p>':''}`;}
 function vocabScreen(){
   $("#view-vocab").innerHTML=`${chipRow(LEVELS,vocabLevel,'setVocabLevel')}
     <input class="search" id="vsearch" placeholder="단어 · 읽기 · 뜻 검색" value="${vocabQ.replace(/"/g,'&quot;')}">
+    <div class="slabel">품사</div>${chipRow(POS,vocabPos,'setVocabPos')}
+    <div class="slabel">정렬</div>${chipRow(SORTS,vocabSort,'setVocabSort')}
+    <div style="text-align:center;margin-top:10px"><button class="chip ${vocabHide?'active':''}" onclick="toggleVocabHide()">🙈 뜻 가리기 ${vocabHide?'ON':'OFF'}</button></div>
     <div id="voclistwrap"></div>`;
   $("#vsearch").addEventListener("input",e=>{vocabQ=e.target.value;renderVocabList();});
   renderVocabList();}
 function setVocabLevel(v){vocabLevel=v;vocabScreen();}
+function setVocabPos(v){vocabPos=v;vocabScreen();}
+function setVocabSort(v){vocabSort=v;vocabScreen();}
+function toggleVocabHide(){vocabHide=!vocabHide;vocabScreen();}
 
 /* PWA: 서비스워커 등록 (오프라인 + 홈화면 설치) */
 if("serviceWorker" in navigator){
