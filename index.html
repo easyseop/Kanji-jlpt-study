@@ -123,16 +123,40 @@
   .fcbtns .dunno{border-color:#d99;color:#b35}
   .empty{color:var(--muted);text-align:center;padding:30px}
   .hide{display:none}
+  #theme{margin-left:auto}
+  #vtitle{color:var(--muted);font-weight:600}
+  .menu{position:absolute;top:52px;left:14px;background:var(--card);border:1px solid var(--line);
+        border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:6px;z-index:30;min-width:170px}
+  .menu .mi{display:block;width:100%;text-align:left;border:none;background:none;color:var(--ink);
+        font-size:15px;padding:11px 14px;border-radius:8px;cursor:pointer}
+  .menu .mi:hover{background:var(--mark)}
+  .setup{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 18px;margin-top:16px;text-align:center}
+  .setup-h{font-size:19px;margin:0 0 12px;color:var(--accent-d)}
+  .slabel{font-size:12px;color:var(--muted);margin:15px 0 5px}
+  .savail{color:var(--muted);font-size:13px;margin:16px 0 18px}
+  .startbtn{background:var(--accent);color:#fff;border:none;border-radius:24px;padding:13px 30px;
+        font-size:16px;font-weight:700;cursor:pointer}
+  .startbtn:disabled{opacity:.4;cursor:default}
+  .snav{display:flex;justify-content:space-between;align-items:center;margin:14px 0 6px}
+  .navb{border:1px solid var(--line);background:var(--card);color:var(--accent-d);border-radius:20px;
+        padding:7px 15px;font-size:14px;font-weight:600;cursor:pointer}
+  .navb:disabled{opacity:.3;cursor:default}
+  .snum{color:var(--muted);font-size:13px}
+  .result-score{font-size:36px;font-weight:800;margin:8px 0 4px}
+  .result-score span{font-size:18px;color:var(--muted);font-weight:600}
+  .wronglist{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0 18px}
+  .wq{font-family:"Yu Mincho",serif;font-size:24px;background:var(--mark);border-radius:8px;padding:4px 11px;cursor:pointer}
 </style>
 </head>
 <body>
 <header><div class="inner">
-  <h1>🇯🇵 한자 공부</h1>
-  <div class="tabs">
-    <button class="tab active" data-view="list">목록</button>
-    <button class="tab" data-view="card">카드</button>
-    <button class="tab" data-view="quiz">퀴즈</button>
-    <button class="ic" id="theme" title="다크 모드">🌙</button>
+  <button class="ic" id="menuBtn" title="메뉴" aria-label="메뉴">☰</button>
+  <h1>🇯🇵 한자 공부<span id="vtitle"></span></h1>
+  <button class="ic" id="theme" title="다크 모드">🌙</button>
+  <div class="menu hide" id="menu">
+    <button class="mi" data-view="list">📋 목록</button>
+    <button class="mi" data-view="card">🃏 카드 학습</button>
+    <button class="mi" data-view="quiz">❓ 퀴즈</button>
   </div>
 </div></header>
 
@@ -287,18 +311,48 @@ function showDetail(char){
 function loadStroke(char){fetch(`https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg@master/kanji/${hex(char)}.svg`)
   .then(r=>r.ok?r.text():Promise.reject()).then(svg=>{const el=$("#stroke");if(el)el.innerHTML=svg;}).catch(()=>{});}
 
-/* 플래시카드 */
-let fcPool=[],fcIdx=0,fcFlip=false;
-function startCard(){fcPool=KANJI.filter(k=>inLevel(k)&&stOK(k)).sort(()=>Math.random()-0.5);fcIdx=0;fcFlip=false;renderCard();}
+/* 세션 공통: 레벨·범위·개수 선택 */
+const COUNTS=[[10,"10개"],[20,"20개"],[30,"30개"],[0,"전체"]];
+let sessCount=10,setupKind="card";
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function chipRow(items,cur,fn){return `<div class="filters" style="justify-content:center">${items.map(([v,l])=>`<button class="chip ${v===cur?'active':''}" onclick="${fn}('${v}')">${l}</button>`).join("")}</div>`;}
+function sessionPool(){if(setupKind==="quiz"&&quizType==="word")return wordPool();return KANJI.filter(k=>inLevel(k)&&stOK(k));}
+function openSetup(kind){setupKind=kind;renderSetup();}
+function renderSetup(){
+  const isQuiz=setupKind==="quiz",el=isQuiz?$("#view-quiz"):$("#view-card");
+  const avail=sessionPool().length,n=sessCount===0?avail:Math.min(sessCount,avail);
+  el.innerHTML=`<div class="setup">
+    <h2 class="setup-h">${isQuiz?"❓ 퀴즈 설정":"🃏 카드 학습 설정"}</h2>
+    ${isQuiz?`<div class="slabel">유형</div>${chipRow(QTYPES,quizType,'setQType')}`:""}
+    <div class="slabel">레벨</div>${chipRow(LEVELS,curLevel,'setSLevel')}
+    <div class="slabel">범위</div>${chipRow(STS,stMode,'setSMode')}
+    <div class="slabel">개수</div>${chipRow(COUNTS,sessCount,'setSCount')}
+    <p class="savail">${avail?`조건 ${avail}개 중 <b>${n}개</b> ${isQuiz?"출제":"학습"}`:"해당 조건에 항목이 없습니다"}</p>
+    <button class="startbtn" ${avail?"":"disabled"} onclick="${isQuiz?'startQuizSession':'startCardSession'}()">시작하기 ▶</button>
+  </div>`;
+}
+function setSLevel(v){curLevel=v;renderSetup();}
+function setSMode(v){stMode=v;renderSetup();}
+function setSCount(v){sessCount=+v;renderSetup();}
+function setQType(v){quizType=v;renderSetup();}
+
+/* 플래시카드 세션 */
+let cardDeck=[],cardIdx=0,cardFlip=false;
+function startCardSession(){let pool=shuffle(KANJI.filter(k=>inLevel(k)&&stOK(k)).slice());
+  if(sessCount>0)pool=pool.slice(0,sessCount);
+  cardDeck=pool;cardIdx=0;cardFlip=false;
+  if(!cardDeck.length){openSetup("card");return;}renderCard();}
 function renderCard(){
-  const head=`<div class="filters" style="justify-content:center">${LEVELS.map(([v,l])=>`<button class="chip ${v===curLevel?'active':''}" onclick="cardLv('${v}')">${l}</button>`).join("")}</div>
-    <div class="filters" style="justify-content:center">${STS.map(([v,l])=>`<button class="chip ${v===stMode?'active':''}" onclick="cardSt('${v}')">${l}</button>`).join("")}</div>`;
-  if(!fcPool.length){$("#view-card").innerHTML=head+`<p class="empty">해당 조건의 한자가 없습니다.</p>`;return;}
-  if(fcIdx>=fcPool.length){$("#view-card").innerHTML=head+`<p class="empty">🎉 ${fcPool.length}장 학습 완료!<br><button class="btn" onclick="startCard()">다시 섞기</button></p>`;return;}
-  const k=fcPool[fcIdx];
-  $("#view-card").innerHTML=head+`
-    <div class="count" style="text-align:center">${fcIdx+1} / ${fcPool.length}</div>
-    <div class="fc"><div class="fcard ${fcFlip?'flip':''}" onclick="this.classList.toggle('flip')">
+  if(cardIdx>=cardDeck.length){$("#view-card").innerHTML=`<div class="setup">
+    <h2 class="setup-h">🎉 ${cardDeck.length}장 학습 완료!</h2>
+    <button class="startbtn" onclick="startCardSession()">한 번 더</button>
+    <div style="margin-top:12px"><button class="navb" onclick="openSetup('card')">설정 바꾸기</button></div></div>`;return;}
+  const k=cardDeck[cardIdx];
+  $("#view-card").innerHTML=`
+    <div class="snav"><button class="navb" ${cardIdx?'':'disabled'} onclick="cardGo(-1)">◀ 이전</button>
+      <span class="snum">${cardIdx+1} / ${cardDeck.length}</span>
+      <button class="navb" onclick="cardGo(1)">${cardIdx===cardDeck.length-1?'완료 ▶':'다음 ▶'}</button></div>
+    <div class="fc"><div class="fcard ${cardFlip?'flip':''}" onclick="this.classList.toggle('flip')">
       <div class="face f"><div class="big">${k.char}</div><div class="hint">탭하면 뜻 보기</div></div>
       <div class="face b">
         <div class="bk">${k.char}</div>
@@ -309,16 +363,15 @@ function renderCard(){
       </div>
     </div></div>
     <div class="fcbtns">
-      <button class="dunno" onclick="cardNext(false)">✗ 모름</button>
-      <button class="know" onclick="cardNext(true)">✓ 외움</button>
+      <button class="dunno" onclick="cardJudge(false)">✗ 모름</button>
+      <button class="know" onclick="cardJudge(true)">✓ 외움</button>
     </div>`;
 }
-function cardNext(known){const k=fcPool[fcIdx];if(known)setLearned(k.char,true);fcIdx++;fcFlip=false;renderCard();}
-function cardLv(v){curLevel=v;startCard();}
-function cardSt(v){stMode=v;startCard();}
+function cardGo(d){cardIdx=Math.max(0,cardIdx+d);cardFlip=false;renderCard();}
+function cardJudge(known){const k=cardDeck[cardIdx];setLearned(k.char,known);cardIdx++;cardFlip=false;renderCard();}
 
 /* 퀴즈 */
-let qScore=0,qTotal=0,quizType="kanji";
+let quizType="kanji";
 const QTYPES=[["kanji","한자"],["word","단어"]];
 function quizPool(){return KANJI.filter(k=>inLevel(k)&&stOK(k));}
 /* 현재 필터의 한자들에서 대표단어를 모아 단어 풀 생성 */
@@ -327,53 +380,79 @@ function wordPool(){const seen={},out=[];
     const word=w[0]+w[2],read=k2h(w[1])+k2h(w[3]),ko=w[4],key=word+"|"+read;
     if(!seen[key]){seen[key]=1;out.push({word:word,read:read,ko:ko});}})));
   return out;}
-function quizHead(){return `<div class="filters" style="justify-content:center">${QTYPES.map(([v,l])=>`<button class="chip ${v===quizType?'active':''}" onclick="setQuizType('${v}')">${l}</button>`).join("")}</div>
-  <div class="filters" style="justify-content:center">${LEVELS.map(([v,l])=>`<button class="chip ${v===curLevel?'active':''}" onclick="setQuizLevel('${v}')">${l}</button>`).join("")}</div>
-  <div class="filters" style="justify-content:center">${STS.map(([v,l])=>`<button class="chip ${v===stMode?'active':''}" onclick="setQuizMode('${v}')">${l}</button>`).join("")}</div>`;}
-function newQuiz(){if(quizType==="word")return newWordQuiz();
-  const pool=quizPool();
-  if(pool.length<1){$("#view-quiz").innerHTML=quizHead()+`<p class="empty">해당 조건의 한자가 없습니다.</p>`;return;}
-  const correct=pool[Math.floor(Math.random()*pool.length)];const ask=Math.random()<0.5;
-  const others=KANJI.filter(k=>k!==correct).sort(()=>Math.random()-0.5).slice(0,3);
-  const opts=[correct,...others].sort(()=>Math.random()-0.5);
-  const label=k=>ask?shortMeaning(k):`<span class="jp">${k.on.map(k2h).concat(k.kun).join("、")||"—"}</span>`;
-  $("#view-quiz").innerHTML=quizHead()+`<div class="quiz"><div class="prompt">${ask?"이 한자의 뜻은?":"이 한자의 읽기는?"}</div>
-    <div class="q">${correct.char}</div>
-    <div class="opts">${opts.map(o=>`<div class="opt" data-c="${o===correct?1:0}" onclick="answer(this)">${label(o)}</div>`).join("")}</div>
-    <div class="score" id="score">맞힘 ${qScore} / 푼 문제 ${qTotal}</div></div>`;}
-function newWordQuiz(){const pool=wordPool();
-  if(pool.length<4){$("#view-quiz").innerHTML=quizHead()+`<p class="empty">해당 조건의 단어가 부족합니다. (필터를 넓혀보세요)</p>`;return;}
-  const correct=pool[Math.floor(Math.random()*pool.length)];const ask=Math.random()<0.5;
-  const others=pool.filter(w=>w.ko!==correct.ko&&w.read!==correct.read).sort(()=>Math.random()-0.5).slice(0,3);
-  const opts=[correct,...others].sort(()=>Math.random()-0.5);
-  const label=w=>ask?w.ko:`<span class="jp">${w.read}</span>`;
-  $("#view-quiz").innerHTML=quizHead()+`<div class="quiz"><div class="prompt">${ask?"이 단어의 뜻은?":"이 단어의 읽기는?"} <button class="spk" onclick="speak('${correct.read}')">🔊</button></div>
-    <div class="q qw">${correct.word}</div>
-    <div class="opts">${opts.map(o=>`<div class="opt" data-c="${o===correct?1:0}" onclick="answer(this)">${label(o)}</div>`).join("")}</div>
-    <div class="score" id="score">맞힘 ${qScore} / 푼 문제 ${qTotal}</div></div>`;}
-function setQuizType(v){quizType=v;newQuiz();}
-function setQuizLevel(v){curLevel=v;newQuiz();}
-function setQuizMode(v){stMode=v;newQuiz();}
-function answer(el){if(el.dataset.done)return;qTotal++;const ok=el.dataset.c==="1";
-  document.querySelectorAll(".opt").forEach(o=>{o.dataset.done=1;if(o.dataset.c==="1")o.classList.add("ok");});
-  if(ok)qScore++;else el.classList.add("no");$("#score").textContent=`맞힘 ${qScore} / 푼 문제 ${qTotal}`;setTimeout(newQuiz,950);}
+let quizItems=[],quizIdx=0;
+function startQuizSession(){
+  quizItems=[];
+  if(quizType==="word"){
+    let pool=shuffle(wordPool().slice());if(pool.length<4){openSetup("quiz");return;}
+    const take=sessCount>0?Math.min(sessCount,pool.length):pool.length;
+    for(let i=0;i<take;i++){const c=pool[i],ask=Math.random()<0.5;
+      const others=shuffle(pool.filter(w=>w.ko!==c.ko&&w.read!==c.read).slice()).slice(0,3);
+      const opts=shuffle([c,...others].map(o=>({correct:o===c,label:ask?o.ko:`<span class="jp">${o.read}</span>`})));
+      quizItems.push({kind:"word",word:c.word,read:c.read,ask:ask,opts:opts,answered:null});}
+  }else{
+    let pool=shuffle(KANJI.filter(k=>inLevel(k)&&stOK(k)).slice());if(pool.length<1){openSetup("quiz");return;}
+    const take=sessCount>0?Math.min(sessCount,pool.length):pool.length;
+    for(let i=0;i<take;i++){const c=pool[i],ask=Math.random()<0.5;
+      const others=shuffle(KANJI.filter(k=>k!==c).slice()).slice(0,3);
+      const opts=shuffle([c,...others].map(o=>({correct:o===c,label:ask?shortMeaning(o):`<span class="jp">${o.on.map(k2h).concat(o.kun).join("、")||"—"}</span>`})));
+      quizItems.push({kind:"kanji",char:c.char,ask:ask,opts:opts,answered:null});}
+  }
+  quizIdx=0;renderQuiz();
+}
+function quizCorrect(){return quizItems.filter(it=>it.answered!=null&&it.opts[it.answered].correct).length;}
+function renderQuiz(){
+  if(quizIdx>=quizItems.length)return renderQuizResult();
+  const it=quizItems[quizIdx],done=it.answered!=null;
+  const prompt=it.kind==="word"?(it.ask?"이 단어의 뜻은?":"이 단어의 읽기는?"):(it.ask?"이 한자의 뜻은?":"이 한자의 읽기는?");
+  const q=it.kind==="word"?`<div class="q qw">${it.word}</div>`:`<div class="q">${it.char}</div>`;
+  const say=it.kind==="word"?it.read:it.char;
+  $("#view-quiz").innerHTML=`
+    <div class="snav"><button class="navb" ${quizIdx?'':'disabled'} onclick="quizGo(-1)">◀ 이전</button>
+      <span class="snum">${quizIdx+1} / ${quizItems.length}</span>
+      <button class="navb" onclick="quizGo(1)">${quizIdx===quizItems.length-1?'결과 ▶':'다음 ▶'}</button></div>
+    <div class="quiz"><div class="prompt">${prompt} <button class="spk" onclick="speak('${say}')">🔊</button></div>${q}
+      <div class="opts">${it.opts.map((o,i)=>{let cls="opt";if(done){if(o.correct)cls+=" ok";else if(i===it.answered)cls+=" no";}
+        return `<div class="${cls}" ${done?"":`onclick="quizAnswer(${i})"`}>${o.label}</div>`;}).join("")}</div>
+      <div class="score">${done?(it.opts[it.answered].correct?"⭕ 정답":"❌ 오답"):"정답을 고르세요"} · 맞힘 ${quizCorrect()} / ${quizItems.length}</div></div>`;
+}
+function quizAnswer(i){const it=quizItems[quizIdx];if(it.answered!=null)return;it.answered=i;renderQuiz();}
+function quizGo(d){quizIdx=Math.max(0,quizIdx+d);renderQuiz();}
+function renderQuizResult(){
+  const total=quizItems.length,correct=quizCorrect(),pct=total?Math.round(correct/total*100):0;
+  const wrong=quizItems.filter(it=>it.answered==null||!it.opts[it.answered].correct);
+  $("#view-quiz").innerHTML=`<div class="setup"><h2 class="setup-h">결과</h2>
+    <p class="result-score">${correct} / ${total} <span>(${pct}%)</span></p>
+    ${wrong.length?`<div class="slabel">틀린·안 푼 문제 ${wrong.length}개</div><div class="wronglist">${wrong.map(it=>`<span class="wq">${it.kind==="word"?it.word:it.char}</span>`).join("")}</div>`:`<p class="savail">전부 맞혔어요! 🎉</p>`}
+    <button class="startbtn" onclick="startQuizSession()">한 번 더</button>
+    <div style="margin-top:12px"><button class="navb" onclick="openSetup('quiz')">설정 바꾸기</button></div></div>`;
+}
 
 /* 뷰 전환 */
 function setView(v){
   ["list","detail","card","quiz"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));
-  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active",t.dataset.view===v||(v==="detail"&&t.dataset.view==="list")));
+  $("#vtitle").textContent=v==="card"?" · 카드":v==="quiz"?" · 퀴즈":"";
+  closeMenu();
   if(v==="list")renderList($("#search").value);
-  if(v==="card")startCard();
-  if(v==="quiz")newQuiz();
+  if(v==="card")openSetup("card");
+  if(v==="quiz")openSetup("quiz");
 }
-document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>setView(t.dataset.view));
+/* 메뉴 */
+function closeMenu(){$("#menu").classList.add("hide");}
+$("#menuBtn").onclick=e=>{e.stopPropagation();$("#menu").classList.toggle("hide");};
+document.addEventListener("click",closeMenu);
+$("#menu").onclick=e=>e.stopPropagation();
+document.querySelectorAll(".mi").forEach(m=>m.onclick=()=>setView(m.dataset.view));
 $("#search").addEventListener("input",e=>renderList(e.target.value));
-/* 키보드: 상세에서 ←/→ 이동 */
+/* 키보드 ←/→: 상세·카드·퀴즈 이동 */
 document.addEventListener("keydown",e=>{
-  if($("#view-detail").classList.contains("hide"))return;
-  const a=[...document.querySelectorAll("#view-detail .nav a")];
-  if(e.key==="ArrowLeft"&&a[1]&&!a[1].classList.contains("dim"))a[1].click();
-  if(e.key==="ArrowRight"&&a[2]&&!a[2].classList.contains("dim"))a[2].click();
+  if(e.key!=="ArrowLeft"&&e.key!=="ArrowRight")return;
+  const d=e.key==="ArrowRight"?1:-1;
+  if(!$("#view-detail").classList.contains("hide")){
+    const a=[...document.querySelectorAll("#view-detail .nav a")];const t=d>0?a[2]:a[1];
+    if(t&&!t.classList.contains("dim"))t.click();return;}
+  if(!$("#view-card").classList.contains("hide")&&cardDeck.length)cardGo(d);
+  else if(!$("#view-quiz").classList.contains("hide")&&quizItems.length)quizGo(d);
 });
 renderList();
 
