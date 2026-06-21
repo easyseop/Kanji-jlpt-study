@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 *.zip
+node_modules/
+package.json
+package-lock.json
+demo/
