@@ -513,8 +513,10 @@ function favCell(ch,el){toggleSet(FAV,"kanji_fav",ch);el.classList.toggle("on",F
 function wordsBlock(g){return g.map(x=>`<li><span class="mark">${k2h(x.r)}</span>${x.words.map(wordHTML).join("")}</li>`).join("");}
 function showDetail(char){
   const k=KANJI.find(x=>x.char===char);const rich=!!k.shape;
-  const idx=curView.findIndex(x=>x.char===char);
-  const prev=idx>0?curView[idx-1].char:null, next=idx>=0&&idx<curView.length-1?curView[idx+1].char:null;
+  /* 현재 목록에 이웃이 있으면 그 안에서, (검색 1건 등) 없으면 전체 한자 순서로 이동 */
+  const nav=(curView.length>1&&curView.some(x=>x.char===char))?curView:KANJI;
+  const idx=nav.findIndex(x=>x.char===char);
+  const prev=idx>0?nav[idx-1].char:null, next=idx>=0&&idx<nav.length-1?nav[idx+1].char:null;
   setView("detail");
   $("#view-detail").innerHTML=`
     <div class="nav">
