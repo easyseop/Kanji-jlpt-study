@@ -385,6 +385,10 @@ ul{margin:12px 0;padding-left:0;list-style:none}
   <div id="view-stats" class="hide"></div>
   <div id="view-more" class="hide">
     <div class="more-list">
+      <div class="more-row" onclick="setView('search')">
+        <div><div class="mt">한자검색</div><div class="ms">한자·뜻·읽기 검색 · 손글씨 키보드로 그려 찾기</div></div>
+        <span class="arr">›</span>
+      </div>
       <div class="more-row" onclick="setView('vocab')">
         <div><div class="mt">단어장</div><div class="ms">대표단어 모아보기 · 뜻 가리기 셀프테스트</div></div>
         <span class="arr">›</span>
@@ -399,6 +403,7 @@ ul{margin:12px 0;padding-left:0;list-style:none}
       </div>
     </div>
   </div>
+  <div id="view-search" class="hide"></div>
 </div>
 <nav class="bnav" id="bnav">
   <button data-view="list">목록</button>
@@ -690,10 +695,10 @@ function renderQuizResult(){
 
 /* 뷰 전환 (하단 탭바) */
 function setView(v){
-  ["list","detail","card","quiz","review","stats","vocab","more"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));
-  $("#vtitle").textContent=v==="card"?" · 한자카드":v==="quiz"?" · 퀴즈":v==="review"?" · 오늘의 복습":v==="stats"?" · 통계":v==="vocab"?" · 단어장":v==="more"?" · 더보기":"";
-  /* 하단 탭 활성: 단어장·통계·더보기 → '더보기' 탭, 상세 → '목록' 탭 */
-  const tabFor=(v==="vocab"||v==="stats"||v==="more")?"more":(v==="detail"?"list":v);
+  ["list","detail","card","quiz","review","stats","vocab","more","search"].forEach(x=>$("#view-"+x).classList.toggle("hide",x!==v));
+  $("#vtitle").textContent=v==="card"?" · 한자카드":v==="quiz"?" · 퀴즈":v==="review"?" · 오늘의 복습":v==="stats"?" · 통계":v==="vocab"?" · 단어장":v==="search"?" · 한자검색":v==="more"?" · 더보기":"";
+  /* 하단 탭 활성: 단어장·통계·검색·더보기 → '더보기' 탭, 상세 → '목록' 탭 */
+  const tabFor=(v==="vocab"||v==="stats"||v==="search"||v==="more")?"more":(v==="detail"?"list":v);
   document.querySelectorAll("#bnav button").forEach(b=>b.classList.toggle("active",b.dataset.view===tabFor));
   if(v==="list")renderList($("#search").value);
   if(v==="card")openSetup("card");
@@ -701,6 +706,7 @@ function setView(v){
   if(v==="review")reviewScreen();
   if(v==="stats")statsScreen();
   if(v==="vocab")vocabScreen();
+  if(v==="search")searchScreen();
   window.scrollTo(0,0);
 }
 /* 하단 탭 클릭 바인딩 */
@@ -888,6 +894,29 @@ function srsGrade(ok){const s=loadSRS(),t=dayNum(),c=srsQueue[srsIdx],e=s[c]||{s
   e.step=ok?Math.min(e.step+1,SRS_STEPS.length-1):0;e.due=t+SRS_STEPS[e.step];s[c]=e;saveSRS(s);
   setLearned(c,ok);setWrong(c,!ok);recordStudy(1);
   srsIdx++;srsFlip=false;renderReview();}
+
+/* 한자검색 (손글씨 키보드 입력 지원) */
+let ksQ="";
+function ksFilter(){const f=ksQ.trim().toLowerCase();if(!f)return[];
+  return KANJI.filter(k=>k.char.includes(f)||k.ko.toLowerCase().includes(f)
+    ||(k.on.join("")+k.on.map(k2h).join("")).toLowerCase().includes(f)
+    ||k.kun.join("").toLowerCase().includes(f)||k.en.join(" ").toLowerCase().includes(f));}
+function renderKsResults(){const list=ksFilter();curView=list;const el=$("#ksresult");
+  if(!ksQ.trim()){el.innerHTML=`<p class="empty">한자를 입력하거나, 손글씨 키보드로 그려 넣어보세요.</p>`;return;}
+  el.innerHTML=list.length?`<div class="count">${list.length}자</div><div class="grid">${list.slice(0,150).map(k=>`
+    <div class="cell ${LEARNED.has(k.char)?'learned':''}" onclick="showDetail('${k.char}')">
+      <span class="fav ${FAV.has(k.char)?'on':''}" onclick="event.stopPropagation();favCell('${k.char}',this)">★</span>
+      <div class="k">${k.char}</div><div class="m">${shortMeaning(k)}</div>
+      <span class="lv">${k.level}</span><span class="chk">✓</span>
+    </div>`).join("")}</div>`:`<p class="empty">결과가 없습니다.</p>`;}
+function searchScreen(){
+  $("#view-search").innerHTML=`
+    <input class="search" id="ksearch" placeholder="한자 · 뜻 · 읽기 입력" value="${ksQ.replace(/"/g,'&quot;')}">
+    <div class="todo" style="margin-top:10px">모양은 알지만 읽는 법을 모를 때: 휴대폰 <b>손글씨 키보드</b>로 한자를 직접 그려 넣으세요.<br>
+      설정 → 일반 → 키보드에서 ‘중국어/일본어 – 손으로 쓰기(필기)’를 추가한 뒤, 이 검색창에서 키보드를 전환해 그리면 됩니다.</div>
+    <div id="ksresult" style="margin-top:14px"></div>`;
+  $("#ksearch").addEventListener("input",e=>{ksQ=e.target.value;renderKsResults();});
+  renderKsResults();}
 
 /* PWA: 서비스워커 등록 (오프라인 + 홈화면 설치) */
 if("serviceWorker" in navigator){
