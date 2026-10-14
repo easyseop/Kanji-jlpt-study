@@ -393,9 +393,13 @@ function kQuizHead(){return `<div class="filters" style="justify-content:center"
 function kNewQuiz(){const pool=KANJI.filter(k=>kInLevel(k)&&kStOK(k));
   if(pool.length<1){$("#k-quiz").innerHTML=kQuizHead()+`<p class="empty">해당 조건의 한자가 없습니다.</p>`;return;}
   const correct=pool[Math.floor(Math.random()*pool.length)];const ask=Math.random()<0.5;
-  const others=KANJI.filter(k=>k!==correct).sort(()=>Math.random()-0.5).slice(0,3);
-  const opts=[correct,...others].sort(()=>Math.random()-0.5);
   const label=k=>ask?shortMeaning(k):`<span class="jp">${k.on.concat(k.kun).join("、")||"—"}</span>`;
+  // 오답 보기: 같은 등급 한자에서 우선 (보기 글자가 같으면 제외)
+  const seen=new Set([label(correct)]),others=[];
+  for(const pool2 of [KANJI.filter(k=>k.level===correct.level),KANJI])
+    for(const k of pool2.slice().sort(()=>Math.random()-0.5)){
+      if(others.length>=3)break;if(k===correct||seen.has(label(k)))continue;seen.add(label(k));others.push(k);}
+  const opts=[correct,...others].sort(()=>Math.random()-0.5);
   $("#k-quiz").innerHTML=kQuizHead()+`<div class="quiz"><div class="prompt">${ask?"이 한자의 뜻은?":"이 한자의 읽기는?"}</div>
     <div class="q">${correct.char}</div>
     <div class="opts">${opts.map(o=>`<div class="opt" data-c="${o===correct?1:0}" onclick="kAnswer(this)">${label(o)}</div>`).join("")}</div>
@@ -521,9 +525,9 @@ function vQuizHead(){return `<div class="filters" style="justify-content:center"
 function vNewQuiz(){const P=vPool();
   if(P.length<4){$("#v-quiz").innerHTML=vQuizHead()+`<p class="empty">단어가 4개 이상이어야 퀴즈를 낼 수 있어요.</p>`;return;}
   const correct=P[Math.floor(Math.random()*P.length)];
-  const ask=Math.random()<0.5;
-  let base=WORDS.filter(w=>w!==correct&&(vCh==="ALL"||w.ch===vCh));if(base.length<3)base=WORDS.filter(w=>w!==correct);
-  const others=base.sort(()=>Math.random()-0.5).slice(0,3);
+  // 가나로만 된 단어는 읽기가 그대로 보이므로 뜻만 묻는다
+  const ask=correct.w===correct.r||Math.random()<0.5;
+  const others=vDistractors(correct,ask);
   const opts=[correct,...others].sort(()=>Math.random()-0.5);
   const label=w=>ask?w.ko:`<span class="jp">${w.r}</span>`;
   $("#v-quiz").innerHTML=vQuizHead()+`<div class="quiz">
@@ -531,6 +535,26 @@ function vNewQuiz(){const P=vPool();
     <div class="qw">${correct.w}</div>
     <div class="opts">${opts.map(o=>`<div class="opt" data-c="${o===correct?1:0}" onclick="vAnswer(this,'${correct.r}')">${label(o)}</div>`).join("")}</div>
     <div class="score" id="vScoreBox">맞힘 ${vScore} / 푼 문제 ${vTotal}</div></div>`;}
+/* 오답 보기: 같은 품사에서만 뽑아 품사로 답이 티 나지 않게.
+   읽기 문제는 글자 수·첫 글자·겹치는 가나가 비슷한 것을 우선 → 헷갈리는 보기 */
+function vDistractors(c,askMeaning){
+  const key=w=>askMeaning?w.ko:w.r;
+  const used=new Set([key(c)]);
+  const ok=w=>w!==c&&!used.has(key(w));
+  const tiers=[w=>w.t===c.t&&(vCh==="ALL"||w.ch===vCh), w=>w.t===c.t, ()=>true];
+  const sim=w=>{let sc=0;const a=[...c.r],b=[...w.r];
+    sc-=Math.abs(a.length-b.length)*1.5; if(a[0]===b[0])sc+=2; if(a.at(-1)===b.at(-1))sc+=1;
+    b.forEach(ch=>{if(a.includes(ch))sc+=1;}); return sc+Math.random()*2;};
+  const out=[];
+  for(const t of tiers){
+    let cand=WORDS.filter(w=>t(w)&&ok(w));
+    if(askMeaning)cand.sort(()=>Math.random()-0.5);
+    else{cand.sort((x,y)=>sim(y)-sim(x));cand=cand.slice(0,8).sort(()=>Math.random()-0.5);}
+    for(const w of cand){if(out.length>=3)break;if(!used.has(key(w))){used.add(key(w));out.push(w);}}
+    if(out.length>=3)break;
+  }
+  return out;
+}
 function vQuizTy(t){vType=t;vNewQuiz();}
 function vQuizSt(v){vSt=v;vNewQuiz();}
 function vAnswer(el,reading){if(el.dataset.done)return;vTotal++;const ok=el.dataset.c==="1";
