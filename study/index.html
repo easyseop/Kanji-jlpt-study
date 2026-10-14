@@ -148,6 +148,22 @@
   .opt.ok{background:#e3f5e8;border-color:var(--ok);color:#1c1c1c}
   .opt.no{background:#fbe6e6;border-color:#d97a7a;color:#1c1c1c}
   .score{margin-top:14px;color:var(--muted);font-size:13px}
+  .quiz .qko{font-size:26px;font-weight:800;margin:6px 0 16px;line-height:1.4}
+  .spk.big{font-size:17px;padding:12px 22px;margin:4px 0 16px;opacity:1;border:1px solid var(--line);background:var(--bg);border-radius:12px;font-weight:700}
+  .tin{display:flex;gap:8px;max-width:360px;margin:0 auto}
+  .tin input{flex:1;min-width:0;padding:12px 14px;border:2px solid var(--line);border-radius:10px;font-size:18px;background:var(--bg);color:var(--ink)}
+  .tin input:focus{outline:none;border-color:var(--accent)}
+  .tin input.ok{border-color:var(--ok)} .tin input.no{border-color:#d97a7a}
+  .linkbtn{background:none;border:none;color:var(--muted);text-decoration:underline;font-size:13px;margin-top:10px;cursor:pointer}
+  .feed{margin:16px auto 0;max-width:440px;border-radius:12px;padding:14px;border:1px solid var(--line);background:var(--bg)}
+  .feed.good{border-color:var(--ok)} .feed.bad{border-color:#d97a7a}
+  .feed .fh{font-weight:800;font-size:15px}
+  .feed .fw{font-size:28px;font-family:"Yu Mincho",serif;margin:6px 0 0}
+  .feed .fk{font-weight:700;margin-top:2px}
+  .feed .nextb{margin-top:12px}
+  .kbrk{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:10px 0 4px}
+  .kb{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--mark);border-radius:9px;padding:4px 10px;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer}
+  .kb b{font-family:"Yu Mincho",serif;font-size:19px;font-weight:400}
   .empty{color:var(--muted);text-align:center;padding:36px}
   .hide{display:none}
 </style>
@@ -445,6 +461,11 @@ function linkify(s){
 }
 function rubyJP(w){return w.w===w.r?w.w:`<ruby>${linkify(w.w)}<rt>${w.r}</rt></ruby>`;}
 function openKanji(ch){ if(!KSET.has(ch))return; kBackToVocab=true; setMode("kanji"); kShow(ch); }
+/* 단어 속 한자 풀이: 食事 → [食 먹을 식] [事 일 사] (누르면 한자 상세) */
+const KMAP=Object.fromEntries(KANJI.map(k=>[k.char,k]));
+function kBreak(word){const cs=[...new Set([...word].filter(ch=>KSET.has(ch)))];
+  if(!cs.length)return "";
+  return `<div class="kbrk">${cs.map(ch=>`<span class="kb" onclick="event.stopPropagation();openKanji('${ch}')"><b>${ch}</b>${shortMeaning(KMAP[ch])}</span>`).join("")}</div>`;}
 
 /* 챕터 선택 바: 목록·카드·퀴즈 공통 */
 function renderChBar(){
@@ -496,9 +517,9 @@ function vRenderCard(){
   const w=vfPool[vfIdx];
   const front=vfDir==="jp"?`<div class="bigw">${w.w}</div><div class="fhint">탭하면 뜻 보기</div>`
                           :`<div class="krbig">${w.ko}</div><div class="fhint">탭하면 단어 보기</div>`;
-  const back =vfDir==="jp"?`<div class="krbig">${w.ko}</div><div class="rd">${w.r}</div>
+  const back =vfDir==="jp"?`<div class="krbig">${w.ko}</div><div class="rd">${w.r}</div>${kBreak(w.w)}
                             <button class="spk" onclick="event.stopPropagation();speak('${w.r}')">🔊 듣기</button>`
-                          :`<div class="bigw">${rubyJP(w)}</div>
+                          :`<div class="bigw">${rubyJP(w)}</div>${kBreak(w.w)}
                             <button class="spk" onclick="event.stopPropagation();speak('${w.r}')">🔊 듣기</button>`;
   $("#v-card").innerHTML=head+`
     <div class="navline"><button onclick="vCardMove(-1)" ${vfIdx===0?'disabled':''}>◀ 이전</button>
@@ -518,49 +539,107 @@ function vCardTy(t){vType=t;vStartCard();}
 function vCardSt(v){vSt=v;vStartCard();}
 function vFlipDir(){vfDir=vfDir==="jp"?"ko":"jp";vRenderCard();}
 
-/* 단어 퀴즈 */
-let vScore=0,vTotal=0;
-function vQuizHead(){return `<div class="filters" style="justify-content:center">${TYPES.map(t=>`<button class="chip ${t===vType?'active':''}" onclick="vQuizTy('${t}')">${t==='ALL'?'전체':t}</button>`).join("")}</div>
-  <div class="filters" style="justify-content:center">${STS.map(([v,l])=>`<button class="chip ${v===vSt?'active':''}" onclick="vQuizSt('${v}')">${l}</button>`).join("")}</div>`;}
-function vNewQuiz(){const P=vPool();
-  if(P.length<4){$("#v-quiz").innerHTML=vQuizHead()+`<p class="empty">단어가 4개 이상이어야 퀴즈를 낼 수 있어요.</p>`;return;}
-  const correct=P[Math.floor(Math.random()*P.length)];
-  // 가나로만 된 단어는 읽기가 그대로 보이므로 뜻만 묻는다
-  const ask=correct.w===correct.r||Math.random()<0.5;
-  const others=vDistractors(correct,ask);
-  const opts=[correct,...others].sort(()=>Math.random()-0.5);
-  const label=w=>ask?w.ko:`<span class="jp">${w.r}</span>`;
+/* 단어 퀴즈 — 4가지 방식 */
+const QMODES=[["mc","객관식"],["rev","뜻 보고 단어"],["type","읽기 직접 쓰기"],["listen","듣고 고르기"]];
+let vScore=0,vTotal=0,vQMode="mc",vOnlyWrong=false,vQ=null;
+let VWRONG=store.get("vocab_wrong");
+try{const m=localStorage.getItem("vocab_qmode");if(QMODES.some(q=>q[0]===m))vQMode=m;}catch(e){}
+function vQuizHead(){return `<div class="filters" style="justify-content:center">${QMODES.map(([v,l])=>`<button class="chip ${v===vQMode?'active':''}" onclick="vQuizMode('${v}')">${l}</button>`).join("")}</div>
+  <div class="filters" style="justify-content:center">${TYPES.map(t=>`<button class="chip ${t===vType?'active':''}" onclick="vQuizTy('${t}')">${t==='ALL'?'전체':t}</button>`).join("")}</div>
+  <div class="filters" style="justify-content:center">${STS.map(([v,l])=>`<button class="chip ${v===vSt&&!vOnlyWrong?'active':''}" onclick="vQuizSt('${v}')">${l}</button>`).join("")}
+    <button class="chip ${vOnlyWrong?'active':''}" onclick="vQuizWrong()">✗ 틀린 단어 ${WORDS.filter(w=>vIn(w)&&VWRONG.has(vid(w))).length}</button></div>`;}
+function vQuizPool(){return vOnlyWrong?WORDS.filter(w=>vIn(w)&&VWRONG.has(vid(w))):vPool();}
+function vNewQuiz(){const P=vQuizPool();
+  if(vOnlyWrong&&!P.length){$("#v-quiz").innerHTML=vQuizHead()+`<p class="empty">🎉 틀린 단어가 없어요! (퀴즈에서 틀리면 여기에 모이고, 맞히면 빠져요)</p>`;return;}
+  if(!vOnlyWrong&&P.length<4){$("#v-quiz").innerHTML=vQuizHead()+`<p class="empty">단어가 4개 이상이어야 퀴즈를 낼 수 있어요.</p>`;return;}
+  let c=P[Math.floor(Math.random()*P.length)];
+  if(vOnlyWrong&&vQ&&P.length>1&&c===vQ.c)c=P.find(w=>w!==vQ.c);
+  const m=vQMode; let ask="";
+  let body="";
+  if(m==="type"){
+    // 한자 단어는 표기를 보고 읽기를, 가나 단어는 뜻을 보고 단어를 쓴다
+    const kana=c.w===c.r;
+    ask=kana?"이 뜻의 단어를 가나(또는 로마자)로 쓰세요":"읽기를 히라가나(또는 로마자)로 쓰세요";
+    body=`<div class="${kana?'qko':'qw'}">${kana?c.ko:c.w}</div>
+      <form class="tin" onsubmit="event.preventDefault();vTyped()">
+        <input id="vTypeIn" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${kana?'예: ちっとも / chittomo':'예: じゅんび / junbi'}">
+        <button class="chip active" type="submit">확인</button></form>
+      <button class="linkbtn" onclick="vTyped(true)">모르겠어요 (정답 보기)</button>`;
+  }else{
+    let key,label,prompt,show;
+    if(m==="rev"){key=w=>w.w;label=w=>`<span class="jp">${w.w}</span>`;prompt="이 뜻의 단어는?";show=`<div class="qko">${c.ko}</div>`;}
+    else if(m==="listen"){key=w=>w.ko;label=w=>w.ko;prompt="잘 듣고 뜻을 고르세요";
+      show=`<button class="spk big" onclick="speak('${c.r}')">🔊 다시 듣기</button>`;}
+    else{const askM=c.w===c.r||Math.random()<0.5;key=askM?(w=>w.ko):(w=>w.r);
+      label=askM?(w=>w.ko):(w=>`<span class="jp">${w.r}</span>`);prompt=askM?"이 단어의 뜻은?":"이 단어의 읽기는?";show=`<div class="qw">${c.w}</div>`;}
+    const opts=[c,...vDistractors(c,key,m!=="mc"||key(c)===c.ko)].sort(()=>Math.random()-0.5);
+    ask=prompt;
+    body=show+`<div class="opts">${opts.map(o=>`<div class="opt" data-c="${o===c?1:0}" onclick="vAnswer(this)">${label(o)}</div>`).join("")}</div>`;
+  }
+  vQ={c};
   $("#v-quiz").innerHTML=vQuizHead()+`<div class="quiz">
-    <div class="prompt">${ask?"이 단어의 뜻은?":"이 단어의 읽기는?"}</div>
-    <div class="qw">${correct.w}</div>
-    <div class="opts">${opts.map(o=>`<div class="opt" data-c="${o===correct?1:0}" onclick="vAnswer(this,'${correct.r}')">${label(o)}</div>`).join("")}</div>
-    <div class="score" id="vScoreBox">맞힘 ${vScore} / 푼 문제 ${vTotal}</div></div>`;}
+    <div class="prompt">${ask}</div>${body}
+    <div id="vFeed"></div>
+    <div class="score" id="vScoreBox">맞힘 ${vScore} / 푼 문제 ${vTotal}</div></div>`;
+  if(m==="listen")speak(c.r);
+  if(m==="type")setTimeout(()=>{const i=$("#vTypeIn");if(i)i.focus();},50);
+}
 /* 오답 보기: 같은 품사에서만 뽑아 품사로 답이 티 나지 않게.
-   읽기 문제는 글자 수·첫 글자·겹치는 가나가 비슷한 것을 우선 → 헷갈리는 보기 */
-function vDistractors(c,askMeaning){
-  const key=w=>askMeaning?w.ko:w.r;
+   읽기가 보기인 문제는 글자 수·첫 글자·겹치는 가나가 비슷한 것을 우선 → 헷갈리는 보기 */
+function vDistractors(c,key,randomPick){
   const used=new Set([key(c)]);
-  const ok=w=>w!==c&&!used.has(key(w));
   const tiers=[w=>w.t===c.t&&(vCh==="ALL"||w.ch===vCh), w=>w.t===c.t, ()=>true];
   const sim=w=>{let sc=0;const a=[...c.r],b=[...w.r];
     sc-=Math.abs(a.length-b.length)*1.5; if(a[0]===b[0])sc+=2; if(a.at(-1)===b.at(-1))sc+=1;
     b.forEach(ch=>{if(a.includes(ch))sc+=1;}); return sc+Math.random()*2;};
   const out=[];
   for(const t of tiers){
-    let cand=WORDS.filter(w=>t(w)&&ok(w));
-    if(askMeaning)cand.sort(()=>Math.random()-0.5);
+    let cand=WORDS.filter(w=>w!==c&&t(w)&&!used.has(key(w)));
+    if(randomPick)cand.sort(()=>Math.random()-0.5);
     else{cand.sort((x,y)=>sim(y)-sim(x));cand=cand.slice(0,8).sort(()=>Math.random()-0.5);}
     for(const w of cand){if(out.length>=3)break;if(!used.has(key(w))){used.add(key(w));out.push(w);}}
     if(out.length>=3)break;
   }
   return out;
 }
-function vQuizTy(t){vType=t;vNewQuiz();}
-function vQuizSt(v){vSt=v;vNewQuiz();}
-function vAnswer(el,reading){if(el.dataset.done)return;vTotal++;const ok=el.dataset.c==="1";
+/* 채점 후: 맞히면 잠깐 뒤 다음 문제, 틀리면 정답 풀이를 보여주고 [다음] 버튼 */
+function vResult(ok){
+  const c=vQ.c,id=vid(c);vTotal++;
+  if(ok){vScore++;if(VWRONG.delete(id))store.set("vocab_wrong",VWRONG);}
+  else{VWRONG.add(id);store.set("vocab_wrong",VWRONG);}
+  $("#vScoreBox").textContent=`맞힘 ${vScore} / 푼 문제 ${vTotal}`;
+  $("#vFeed").innerHTML=`<div class="feed ${ok?'good':'bad'}">
+      <div class="fh">${ok?'⭕ 정답!':'❌ 아쉬워요'}</div>
+      <div class="fw">${rubyJP(c)} <button class="spk" onclick="speak('${c.r}')">🔊</button></div>
+      <div class="fk">${c.ko}</div>${kBreak(c.w)}
+      ${ok?'':`<button class="chip active nextb" onclick="vNewQuiz()">다음 문제 ▶</button>`}</div>`;
+  if(ok)setTimeout(()=>{if(vQ&&vQ.c===c&&vCur==="quiz")vNewQuiz();},1300);
+  else{const b=$("#vFeed .nextb");if(b)b.focus();}
+}
+function vAnswer(el){if(el.dataset.done)return;const ok=el.dataset.c==="1";
   document.querySelectorAll("#v-quiz .opt").forEach(o=>{o.dataset.done=1;if(o.dataset.c==="1")o.classList.add("ok");});
-  if(ok)vScore++;else el.classList.add("no");
-  $("#vScoreBox").textContent=`맞힘 ${vScore} / 푼 문제 ${vTotal}`;setTimeout(vNewQuiz,1100);}
+  if(!ok)el.classList.add("no");vResult(ok);}
+/* 주관식: 히라가나·가타카나·로마자 모두 허용, 장음 표기 차이(ou/oo/uu 등)와 な형용사의 だ 생략도 인정 */
+function hira(s){return [...s].map(ch=>{const c=ch.codePointAt(0);return (c>=0x30A1&&c<=0x30F6)?String.fromCodePoint(c-0x60):ch;}).join("");}
+function rjNorm(s){return s.toLowerCase().replace(/[^a-z]/g,"").replace(/jy/g,"j").replace(/m(?=[bmp])/g,"n").replace(/([aiueo])\1/g,"$1").replace(/ou/g,"o").replace(/ei/g,"e");}
+function vTyped(giveUp){
+  if(!vQ||$("#vTypeIn").disabled)return;
+  const c=vQ.c,raw=$("#vTypeIn").value.trim().replace(/\s/g,"");
+  if(!giveUp&&!raw)return;
+  const ans=c.w===c.r?c.w:c.r, alt=ans.replace(/だ$/,"");
+  let ok=false;
+  if(!giveUp){
+    const h=hira(raw);
+    if(/[a-zA-Z]/.test(raw)){const n=rjNorm(raw);ok=[ans,alt].some(a=>rjNorm(kanaToRomaji(a,false))===n||rjNorm(kanaToRomaji(a,true))===n);}
+    else ok=[ans,alt].some(a=>hira(a).replace(/ー/g,"")===h.replace(/ー/g,""));
+  }
+  $("#vTypeIn").disabled=true;$("#vTypeIn").classList.add(ok?"ok":"no");
+  vResult(ok);
+}
+function vQuizMode(m){vQMode=m;try{localStorage.setItem("vocab_qmode",m);}catch(e){}vNewQuiz();}
+function vQuizTy(t){vType=t;vNewQuiz();}
+function vQuizSt(v){vSt=v;vOnlyWrong=false;vNewQuiz();}
+function vQuizWrong(){vOnlyWrong=!vOnlyWrong;vNewQuiz();}
 
 function vSetView(v){vCur=v;
   ["list","card","quiz"].forEach(x=>$("#v-"+x).classList.toggle("hide",x!==v));
