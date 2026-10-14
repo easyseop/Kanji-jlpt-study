@@ -19,24 +19,38 @@
   ruby rt{font-size:.5em;color:var(--muted);font-weight:400}
   .wrap{max-width:780px;margin:0 auto;padding:0 16px 90px}
   header{position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 16px;border-bottom:1px solid var(--line)}
-  header .inner{max-width:780px;margin:0 auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  header .inner{max-width:748px;margin:0 auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   h1{font-size:15px;margin:0}
   .modes{display:flex;gap:4px;background:var(--mark);padding:3px;border-radius:20px}
   .mode{border:none;background:none;color:var(--muted);padding:5px 14px;border-radius:17px;font-size:13px;cursor:pointer;font-weight:600}
   .mode.active{background:var(--card);color:var(--accent-d);box-shadow:0 1px 3px rgba(0,0,0,.12)}
   .ic{margin-left:auto;border:1px solid var(--line);background:var(--card);color:var(--muted);
       padding:6px 10px;border-radius:20px;font-size:13px;cursor:pointer}
-  .chbar{display:flex;gap:8px;margin:14px 0 0;overflow-x:auto;padding-bottom:2px}
-  .chb{border:2px solid var(--line);background:var(--card);color:var(--muted);padding:8px 16px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;line-height:1.3}
+  .chbar{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(82px,1fr);gap:8px;margin:14px 0 0;overflow-x:auto;padding-bottom:2px}
+  .chb{border:2px solid var(--line);background:var(--card);color:var(--muted);padding:8px 4px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;line-height:1.3;text-align:center}
   .chb .n{font-size:11px;font-weight:400;display:block}
   .chb.active{border-color:var(--accent);color:var(--accent-d);background:var(--mark)}
-  .tabs{display:flex;gap:6px;margin:14px 0 0}
-  .tab{border:1px solid var(--line);background:var(--card);color:var(--muted);
-       padding:6px 14px;border-radius:20px;font-size:13px;cursor:pointer}
-  .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .filters{display:flex;gap:6px;margin:12px 0 0;flex-wrap:wrap}
+  /* 탭: 3칸 균등 세그먼트 */
+  .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:14px 0 0;
+        background:var(--mark);padding:4px;border-radius:14px}
+  .tab{border:none;background:none;color:var(--muted);padding:9px 0;border-radius:10px;
+       font-size:14px;font-weight:700;cursor:pointer}
+  .tab.active{background:var(--card);color:var(--accent-d);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  /* 필터 칩: 같은 크기 칸으로 정렬 (모바일 cN칸 / 넓은 화면 dN칸) */
+  .filters{display:grid;gap:6px;margin:10px 0 0;grid-template-columns:repeat(3,minmax(0,1fr))}
+  .filters.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .filters.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+  @media (min-width:640px){
+    .filters.d3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .filters.d4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .filters.d6{grid-template-columns:repeat(6,minmax(0,1fr))}
+    .filters.d8{grid-template-columns:repeat(8,minmax(0,1fr))}
+  }
   .chip{border:1px solid var(--line);background:var(--card);color:var(--muted);
-        padding:5px 13px;border-radius:18px;font-size:13px;cursor:pointer}
+        padding:0 4px;min-height:36px;border-radius:10px;font-size:13px;cursor:pointer;
+        display:flex;align-items:center;justify-content:center;text-align:center;
+        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:inherit}
+  .empty .chip,.feed .nextb,.tin .chip{display:inline-flex;padding:0 18px}
   .chip.active{background:var(--accent-d);color:#fff;border-color:var(--accent-d)}
   .progress{margin:14px 2px 0;font-size:12px;color:var(--muted)}
   .bar{height:8px;background:var(--mark);border-radius:6px;overflow:hidden;margin-top:5px}
@@ -109,9 +123,9 @@
            padding:9px 13px;margin-top:12px;font-size:13px;cursor:pointer;color:var(--accent-d);font-weight:600}
   /* 카드 */
   .fc{perspective:1200px;max-width:430px;margin:8px auto 0}
-  .fcard{position:relative;height:330px;cursor:pointer;transition:transform .5s;transform-style:preserve-3d}
+  .fcard{position:relative;display:grid;min-height:330px;cursor:pointer;transition:transform .5s;transform-style:preserve-3d}
   .fcard.flip{transform:rotateY(180deg)}
-  .face{position:absolute;inset:0;backface-visibility:hidden;background:var(--card);border:1px solid var(--line);
+  .face{grid-area:1/1;position:relative;-webkit-backface-visibility:hidden;backface-visibility:hidden;background:var(--card);border:1px solid var(--line);
         border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center}
   .face.b{transform:rotateY(180deg)}
   .face .big{font-size:120px;font-family:"Yu Mincho",serif;line-height:1}
@@ -123,6 +137,7 @@
   .fc-label{font-size:11px;font-weight:700;color:#fff;background:var(--accent);
         border-radius:10px;padding:2px 10px;margin:8px 0 6px;letter-spacing:1px}
   .fc-read{margin:9px 0 0;text-align:center}
+  .fc-read .rdl{font-size:16px;line-height:1.7}
   .fc-tag{font-size:10px;font-weight:700;color:#fff;border-radius:9px;padding:2px 8px;margin-right:6px}
   .fc-tag.on{background:var(--accent-d)} .fc-tag.kun{background:var(--ok)}
   .fc-ex{margin-top:3px}
@@ -187,8 +202,8 @@
       <button class="tab" data-kv="quiz">퀴즈</button>
     </div>
     <div id="k-list">
-      <div class="filters" id="kLv"></div>
-      <div class="filters" id="kSt"></div>
+      <div class="filters c3 d6" id="kLv"></div>
+      <div class="filters c3" id="kSt"></div>
       <div class="progress" id="kProg"></div>
       <input class="search" id="kSearch" placeholder="한자·뜻·읽기·로마자 검색 (예: 日, 날, ニチ, nichi, day)">
       <div class="count" id="kCount"></div>
@@ -208,8 +223,8 @@
       <button class="tab" data-vv="quiz">퀴즈</button>
     </div>
     <div id="v-list">
-      <div class="filters" id="vTy"></div>
-      <div class="filters" id="vSt"></div>
+      <div class="filters c4 d8" id="vTy"></div>
+      <div class="filters c3" id="vSt"></div>
       <div class="progress" id="vProg"></div>
       <div class="hint">💡 한자에 밑줄이 있으면 눌러서 한자 상세를 볼 수 있어요</div>
       <input class="search" id="vSearch" placeholder="단어·읽기·뜻·로마자 검색 (예: 写真, しゃしん, 사진, shashin)">
@@ -368,13 +383,13 @@ function fcRead(label,readings,groups,speakTxt,cls){
   const rd=readings.length?readings.join("、"):"—";
   const exs=[];
   for(const g of (groups||[])){ for(const w of (g.words||[])){ if(exs.length<2) exs.push(w); } if(exs.length>=2) break; }
-  return `<div class="fc-read"><span class="fc-tag ${cls}">${label}</span> <span class="jp">${rd}</span>`
+  return `<div class="fc-read"><span class="fc-tag ${cls}">${label}</span> <span class="jp rdl">${rd}</span>`
     +(readings.length&&speakTxt?` <button class="spk" onclick="event.stopPropagation();speak('${speakTxt}')">🔊</button>`:"")
     +exs.map(w=>`<div class="fc-ex">${wordHTML(w)}</div>`).join("")+`</div>`;
 }
 function kRenderCard(){
-  const head=`<div class="filters" style="justify-content:center">${LEVELS.map(([v,l])=>`<button class="chip ${v===kLevel?'active':''}" onclick="kCardLv('${v}')">${l}</button>`).join("")}</div>
-    <div class="filters" style="justify-content:center">${STS.map(([v,l])=>`<button class="chip ${v===kSt?'active':''}" onclick="kCardSt('${v}')">${l}</button>`).join("")}</div>`;
+  const head=`<div class="filters c3 d6">${LEVELS.map(([v,l])=>`<button class="chip ${v===kLevel?'active':''}" onclick="kCardLv('${v}')">${l}</button>`).join("")}</div>
+    <div class="filters c3">${STS.map(([v,l])=>`<button class="chip ${v===kSt?'active':''}" onclick="kCardSt('${v}')">${l}</button>`).join("")}</div>`;
   if(!kfPool.length){$("#k-card").innerHTML=head+`<p class="empty">해당 조건의 한자가 없습니다.</p>`;return;}
   if(kfIdx>=kfPool.length){$("#k-card").innerHTML=head+`<p class="empty">🎉 ${kfPool.length}장 학습 완료!<br><br><button class="chip" onclick="kStartCard()">다시 섞기</button></p>`;return;}
   const k=kfPool[kfIdx];
@@ -404,8 +419,8 @@ function kCardSt(v){kSt=v;kStartCard();}
 
 /* 한자 퀴즈 */
 let kScore=0,kTotal=0;
-function kQuizHead(){return `<div class="filters" style="justify-content:center">${LEVELS.map(([v,l])=>`<button class="chip ${v===kLevel?'active':''}" onclick="kQuizLv('${v}')">${l}</button>`).join("")}</div>
-  <div class="filters" style="justify-content:center">${STS.map(([v,l])=>`<button class="chip ${v===kSt?'active':''}" onclick="kQuizSt('${v}')">${l}</button>`).join("")}</div>`;}
+function kQuizHead(){return `<div class="filters c3 d6">${LEVELS.map(([v,l])=>`<button class="chip ${v===kLevel?'active':''}" onclick="kQuizLv('${v}')">${l}</button>`).join("")}</div>
+  <div class="filters c3">${STS.map(([v,l])=>`<button class="chip ${v===kSt?'active':''}" onclick="kQuizSt('${v}')">${l}</button>`).join("")}</div>`;}
 function kNewQuiz(){const pool=KANJI.filter(k=>kInLevel(k)&&kStOK(k));
   if(pool.length<1){$("#k-quiz").innerHTML=kQuizHead()+`<p class="empty">해당 조건의 한자가 없습니다.</p>`;return;}
   const correct=pool[Math.floor(Math.random()*pool.length)];const ask=Math.random()<0.5;
@@ -509,8 +524,8 @@ function vLearn(id,el){toggleSet(VLEARNED,"vocab_learned",id);el.textContent=VLE
 let vfPool=[],vfIdx=0,vfDir="jp";
 function vStartCard(){vfPool=vPool().slice().sort(()=>Math.random()-0.5);vfIdx=0;vRenderCard();}
 function vRenderCard(){
-  const head=`<div class="filters" style="justify-content:center">${TYPES.map(t=>`<button class="chip ${t===vType?'active':''}" onclick="vCardTy('${t}')">${t==='ALL'?'전체':t}</button>`).join("")}</div>
-    <div class="filters" style="justify-content:center">${STS.map(([v,l])=>`<button class="chip ${v===vSt?'active':''}" onclick="vCardSt('${v}')">${l}</button>`).join("")}
+  const head=`<div class="filters c4 d8">${TYPES.map(t=>`<button class="chip ${t===vType?'active':''}" onclick="vCardTy('${t}')">${t==='ALL'?'전체':t}</button>`).join("")}</div>
+    <div class="filters c2 d4">${STS.map(([v,l])=>`<button class="chip ${v===vSt?'active':''}" onclick="vCardSt('${v}')">${l}</button>`).join("")}
       <button class="chip" onclick="vFlipDir()">${vfDir==="jp"?"일→한":"한→일"} ⇄</button></div>`;
   if(!vfPool.length){$("#v-card").innerHTML=head+`<p class="empty">해당 조건의 단어가 없습니다.</p>`;return;}
   if(vfIdx>=vfPool.length){$("#v-card").innerHTML=head+`<p class="empty">🎉 ${vfPool.length}개 학습 완료!<br><br><button class="chip" onclick="vStartCard()">다시 섞기</button></p>`;return;}
@@ -544,9 +559,9 @@ const QMODES=[["mc","객관식"],["rev","뜻 보고 단어"],["type","읽기 직
 let vScore=0,vTotal=0,vQMode="mc",vOnlyWrong=false,vQ=null;
 let VWRONG=store.get("vocab_wrong");
 try{const m=localStorage.getItem("vocab_qmode");if(QMODES.some(q=>q[0]===m))vQMode=m;}catch(e){}
-function vQuizHead(){return `<div class="filters" style="justify-content:center">${QMODES.map(([v,l])=>`<button class="chip ${v===vQMode?'active':''}" onclick="vQuizMode('${v}')">${l}</button>`).join("")}</div>
-  <div class="filters" style="justify-content:center">${TYPES.map(t=>`<button class="chip ${t===vType?'active':''}" onclick="vQuizTy('${t}')">${t==='ALL'?'전체':t}</button>`).join("")}</div>
-  <div class="filters" style="justify-content:center">${STS.map(([v,l])=>`<button class="chip ${v===vSt&&!vOnlyWrong?'active':''}" onclick="vQuizSt('${v}')">${l}</button>`).join("")}
+function vQuizHead(){return `<div class="filters c2 d4">${QMODES.map(([v,l])=>`<button class="chip ${v===vQMode?'active':''}" onclick="vQuizMode('${v}')">${l}</button>`).join("")}</div>
+  <div class="filters c4 d8">${TYPES.map(t=>`<button class="chip ${t===vType?'active':''}" onclick="vQuizTy('${t}')">${t==='ALL'?'전체':t}</button>`).join("")}</div>
+  <div class="filters c2 d4">${STS.map(([v,l])=>`<button class="chip ${v===vSt&&!vOnlyWrong?'active':''}" onclick="vQuizSt('${v}')">${l}</button>`).join("")}
     <button class="chip ${vOnlyWrong?'active':''}" onclick="vQuizWrong()">✗ 틀린 단어 ${WORDS.filter(w=>vIn(w)&&VWRONG.has(vid(w))).length}</button></div>`;}
 function vQuizPool(){return vOnlyWrong?WORDS.filter(w=>vIn(w)&&VWRONG.has(vid(w))):vPool();}
 function vNewQuiz(){const P=vQuizPool();
