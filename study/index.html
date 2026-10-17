@@ -26,9 +26,14 @@
   .mode.active{background:var(--card);color:var(--accent-d);box-shadow:0 1px 3px rgba(0,0,0,.12)}
   .ic{margin-left:auto;border:1px solid var(--line);background:var(--card);color:var(--muted);
       padding:6px 10px;border-radius:20px;font-size:13px;cursor:pointer}
-  .chbar{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(82px,1fr);gap:8px;margin:14px 0 0;overflow-x:auto;padding-bottom:2px}
-  .chb{border:2px solid var(--line);background:var(--card);color:var(--muted);padding:8px 4px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;line-height:1.3;text-align:center}
+  .chbar{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:8px;margin:14px 0 0}
+  .chb{border:2px solid var(--line);background:var(--card);color:var(--muted);padding:6px 2px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;line-height:1.3;text-align:center}
   .chb .n{font-size:11px;font-weight:400;display:block}
+  .chb .ck{margin-right:3px;font-weight:400}
+  .chtools{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px}
+  .chtools .chsum{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chtools .chsum b{color:var(--accent-d)}
+  .chtools .chip{flex:none;padding:0 12px;min-height:32px;font-size:12.5px}
   .chb.active{border-color:var(--accent);color:var(--accent-d);background:var(--mark)}
   /* 탭: 3칸 균등 세그먼트 */
   .tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:14px 0 0;
@@ -250,6 +255,7 @@
   <!-- ════ 단어장 ════ -->
   <div id="m-vocab" class="hide">
     <div class="chbar" id="vChBar"></div>
+    <div class="chtools" id="vChTools"></div>
     <div class="tabs" id="vTabs">
       <button class="tab active" data-vv="list">목록</button>
       <button class="tab" data-vv="card">카드</button>
@@ -507,15 +513,31 @@ document.addEventListener("keydown",e=>{
 });
 
 /* ══════════ 단어장 ══════════ */
-let vType="ALL", vSt="all", vCh="ALL";
+let vType="ALL", vSt="all", vChs=new Set(), vMulti=false;
 let VFAV=store.get("vocab_fav"), VLEARNED=store.get("vocab_learned");
 const vid=w=>w.w+"|"+w.r;
 const TYPES=["ALL",...[...new Set(WORDS.map(w=>w.t))]];
 const chNum=c=>parseInt(String(c).replace(/\D/g,""))||0;
 const CHS=[...new Set(WORDS.map(w=>w.ch))].sort((a,b)=>chNum(a)-chNum(b));
+WORDS.sort((a,b)=>chNum(a.ch)-chNum(b.ch));  // 여러 챕터를 모아볼 때 챕터 순서대로
 const chLabel=c=>c==="ALL"?"전체":"챕터 "+(chNum(c)||c);
 let vCur="list";
-try{const s=localStorage.getItem("vocab_ch");vCh=(s&&(s==="ALL"||CHS.includes(s)))?s:CHS[0];}catch(e){vCh=CHS[0];}
+/* 선택한 챕터들 (여러 개 가능). 저장: vocab_chs, 예전 단일 선택 vocab_ch 도 읽음 */
+try{
+  let a=JSON.parse(localStorage.getItem("vocab_chs")||"null");
+  if(!a){const o=localStorage.getItem("vocab_ch");a=o==="ALL"?CHS:(o?[o]:null);}
+  if(a)vChs=new Set(a.filter(c=>CHS.includes(c)));
+  vMulti=localStorage.getItem("vocab_chmulti")==="1";
+}catch(e){}
+if(!vChs.size)vChs=new Set([CHS[0]]);
+const vAllCh=()=>vChs.size===CHS.length;
+function vChName(){
+  if(vAllCh())return "전체";
+  const n=CHS.filter(c=>vChs.has(c)).map(chNum);
+  if(n.length===1)return "챕터 "+n[0];
+  const run=n.every((x,i)=>i===0||x===n[i-1]+1);
+  return "챕터 "+(run?n[0]+"~"+n[n.length-1]:n.join("·"));
+}
 
 function vRomaji(w){if(w._rj===undefined)w._rj=kanaToRomaji(w.r,false)+" "+kanaToRomaji(w.r,true);return w._rj;}
 function linkify(s){
@@ -533,9 +555,23 @@ function kBreak(word){const cs=[...new Set([...word].filter(ch=>KSET.has(ch)))];
 /* 챕터 선택 바: 목록·카드·퀴즈 공통 */
 function renderChBar(){
   $("#vChBar").innerHTML=[...CHS,"ALL"].map(c=>{const n=c==="ALL"?WORDS.length:WORDS.filter(w=>w.ch===c).length;
-    return `<button class="chb ${c===vCh?'active':''}" onclick="vSelCh('${c}')">${chLabel(c)}<span class="n">${n}단어</span></button>`;}).join("");
+    const on=c==="ALL"?vAllCh():(vChs.has(c)&&!vAllCh());
+    return `<button class="chb ${on?'active':''}" onclick="vSelCh('${c}')">${vMulti&&c!=="ALL"?`<span class="ck">${vChs.has(c)?'☑':'☐'}</span>`:""}${chLabel(c)}<span class="n">${n}단어</span></button>`;}).join("");
+  const cnt=WORDS.filter(w=>vChs.has(w.ch)).length;
+  $("#vChTools").innerHTML=`<span class="chsum">${vMulti?`📚 <b>${vChName()}</b> · ${cnt}단어`:"한 챕터씩 보기"}</span>
+    <button class="chip ${vMulti?'active':''}" onclick="vToggleMulti()">${vMulti?'☑ 여러 챕터 모아보기 ON':'☐ 여러 챕터 모아보기'}</button>`;
 }
-function vSelCh(c){vCh=c;try{localStorage.setItem("vocab_ch",c);}catch(e){}renderChBar();vSetView(vCur);}
+function vSaveCh(){try{localStorage.setItem("vocab_chs",JSON.stringify([...vChs]));localStorage.setItem("vocab_chmulti",vMulti?"1":"0");}catch(e){}}
+/* 모아보기 OFF: 누른 챕터 하나만 / ON: 누를 때마다 추가·빼기 (최소 1개) */
+function vSelCh(c){
+  if(c==="ALL")vChs=new Set(CHS);
+  else if(!vMulti)vChs=new Set([c]);
+  else if(vAllCh())vChs=new Set([c]);
+  else if(vChs.has(c)){if(vChs.size>1)vChs.delete(c);}
+  else vChs.add(c);
+  vSaveCh();renderChBar();vSetView(vCur);
+}
+function vToggleMulti(){vMulti=!vMulti;if(!vMulti&&!vAllCh()&&vChs.size>1)vChs=new Set([CHS.find(c=>vChs.has(c))]);vSaveCh();renderChBar();vSetView(vCur);}
 $("#vTy").innerHTML=TYPES.map(t=>`<button class="chip ${t==='ALL'?'active':''}" data-vty="${t}">${t==='ALL'?'전체':t}</button>`).join("");
 $("#vSt").innerHTML=STS.map(([v,l])=>`<button class="chip ${v==='all'?'active':''}" data-vst="${v}">${l}</button>`).join("");
 document.querySelectorAll("[data-vty]").forEach(c=>c.onclick=()=>{vType=c.dataset.vty;
@@ -543,7 +579,7 @@ document.querySelectorAll("[data-vty]").forEach(c=>c.onclick=()=>{vType=c.datase
 document.querySelectorAll("[data-vst]").forEach(c=>c.onclick=()=>{vSt=c.dataset.vst;
   document.querySelectorAll("[data-vst]").forEach(x=>x.classList.toggle("active",x===c));vRenderList($("#vSearch").value);});
 
-function vIn(w){return (vType==="ALL"||w.t===vType)&&(vCh==="ALL"||w.ch===vCh);}
+function vIn(w){return (vType==="ALL"||w.t===vType)&&vChs.has(w.ch);}
 function vStOK(w){const id=vid(w);return vSt==="all"||(vSt==="fav"&&VFAV.has(id))||(vSt==="unlearned"&&!VLEARNED.has(id));}
 function vPool(){return WORDS.filter(w=>vIn(w)&&vStOK(w));}
 function vFiltered(f){f=f.trim().toLowerCase();
@@ -551,7 +587,7 @@ function vFiltered(f){f=f.trim().toLowerCase();
     ||w.ko.toLowerCase().includes(f)||vRomaji(w).includes(f)));}
 function vProgress(){const p=WORDS.filter(vIn);const done=p.filter(w=>VLEARNED.has(vid(w))).length;
   const pct=p.length?Math.round(done/p.length*100):0;
-  $("#vProg").innerHTML=`암기 진도 (${chLabel(vCh)} · ${vType==="ALL"?"모든 품사":vType}) · ${done} / ${p.length} (${pct}%)<div class="bar"><i style="width:${pct}%"></i></div>`;}
+  $("#vProg").innerHTML=`암기 진도 (${vChName()} · ${vType==="ALL"?"모든 품사":vType}) · ${done} / ${p.length} (${pct}%)<div class="bar"><i style="width:${pct}%"></i></div>`;}
 function vRenderList(f=""){const L=vFiltered(f);vProgress();$("#vCount").textContent=`${L.length}개`;
   $("#vList").innerHTML=L.length?L.map(w=>{const id=vid(w);return `
     <div class="row ${VLEARNED.has(id)?'learned':''}">
@@ -651,7 +687,7 @@ function vNewQuiz(){const P=vQuizPool();
    읽기가 보기인 문제는 글자 수·첫 글자·겹치는 가나가 비슷한 것을 우선 → 헷갈리는 보기 */
 function vDistractors(c,key,randomPick){
   const used=new Set([key(c)]);
-  const tiers=[w=>w.t===c.t&&(vCh==="ALL"||w.ch===vCh), w=>w.t===c.t, ()=>true];
+  const tiers=[w=>w.t===c.t&&vChs.has(w.ch), w=>w.t===c.t, ()=>true];
   const sim=w=>{let sc=0;const a=[...c.r],b=[...w.r];
     sc-=Math.abs(a.length-b.length)*1.5; if(a[0]===b[0])sc+=2; if(a.at(-1)===b.at(-1))sc+=1;
     b.forEach(ch=>{if(a.includes(ch))sc+=1;}); return sc+Math.random()*2;};
