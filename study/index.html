@@ -567,7 +567,8 @@ function exHTML(s,blankIt){
   if(blankIt)s=s.replace(/【[^】]*】/,"＿＿");
   return jr(s).replace("【",'<span class="tw">').replace("】","</span>");
 }
-const exSay=s=>jkana(s).replace(/[【】]/g,"").replace(/'/g,"");
+/* 🔊 문장은 한자가 섞인 원문 그대로 읽힌다: 히라가나만 주면 엔진이 단어 경계를 몰라 조사 は를 '하'로 읽는 등 어색해짐 */
+const exSay=s=>jplain(s).replace(/[【】]/g,"").replace(/'/g,"");
 function exBlock(w,max=2){
   if(!w.ex||!w.ex.length)return "";
   return `<div class="vexs">${w.ex.slice(0,max).map(e=>`<div class="vex">
@@ -821,8 +822,7 @@ function jr(s){
     .replace(/＿＿/g,'<span class="blank"></span>');
 }
 const jplain=s=>s.replace(/\//g,"").replace(/\(([ぁ-ゟー]+)\)/g,"");
-const jkana=s=>s.replace(/\//g,"").replace(/[一-鿿々]+\(([ぁ-ゟー]+)\)/g,"$1");
-const say=s=>`<button class="spk" onclick="event.stopPropagation();speak('${jkana(s).replace(/'/g,"")}')">🔊</button>`;
+const say=s=>`<button class="spk" onclick="event.stopPropagation();speak('${jplain(s).replace(/'/g,"")}')">🔊</button>`;
 const gItems=()=>G.items.filter(i=>i.topic===gTopic&&(gKind==="ALL"||i.kind===gKind));
 const gKinds=()=>["ALL",...new Set(G.items.filter(i=>i.topic===gTopic).map(i=>i.kind))];
 const gTable=()=>G.tables[gTopic]||null;
