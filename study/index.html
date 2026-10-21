@@ -157,6 +157,7 @@
   .navline button{border:1px solid var(--line);background:var(--card);color:var(--accent-d);
        border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;font-weight:600}
   .navline button:disabled{opacity:.3;cursor:default}
+  .navline .dirb{padding:3px 10px;margin-left:6px;font-size:12px}
   /* 퀴즈 */
   .quiz{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px 20px;margin-top:14px;text-align:center}
   .quiz .q{font-size:80px;font-family:"Yu Mincho",serif;margin:4px 0 14px;line-height:1.2}
@@ -272,7 +273,7 @@
     </div>
     <div id="v-list">
       <div class="filters c4 d8" id="vTy"></div>
-      <div class="filters c3" id="vSt"></div>
+      <div class="filters c4" id="vSt"></div>
       <div class="progress" id="vProg"></div>
       <div class="hint">💡 한자에 밑줄이 있으면 눌러서 한자 상세를 볼 수 있어요</div>
       <input class="search" id="vSearch" placeholder="단어·읽기·뜻·로마자 검색 (예: 写真, しゃしん, 사진, shashin)">
@@ -475,7 +476,7 @@ function kRenderCard(){
       <button class="know" onclick="kCardNext(true)">✓ 외움</button>
     </div>`;
 }
-function kCardNext(known){const k=kfPool[kfIdx];if(known){LEARNED.add(k.char);store.set("kanji_learned",LEARNED);}kfIdx++;kRenderCard();}
+function kCardNext(known){const k=kfPool[kfIdx];if(known)LEARNED.add(k.char);else LEARNED.delete(k.char);store.set("kanji_learned",LEARNED);kfIdx++;kRenderCard();}
 function kCardMove(d){kfIdx=Math.max(0,Math.min(kfPool.length,kfIdx+d));kRenderCard();}
 function kCardLv(v){kLevel=v;kStartCard();}
 function kCardSt(v){kSt=v;kStartCard();}
@@ -524,6 +525,13 @@ document.addEventListener("keydown",e=>{
 /* ══════════ 단어장 ══════════ */
 let vType="ALL", vSt="all", vChs=new Set(), vMulti=false;
 let VFAV=store.get("vocab_fav"), VLEARNED=store.get("vocab_learned");
+/* 모름 목록: 카드에서 ✗모름을 누르거나 퀴즈에서 틀린 단어. 카드 ✓외움·퀴즈 정답·목록 ✅ 이면 빠진다 */
+let VWRONG=store.get("vocab_wrong");
+const VSTS=[...STS,["wrong","✗ 모름"]];
+const vWrongN=()=>WORDS.filter(w=>vIn(w)&&VWRONG.has(vid(w))).length;
+const vStLabel=(v,l)=>v==="wrong"?`✗ 모름 ${vWrongN()}`:l;
+function vMarkUnknown(w){const id=vid(w);VWRONG.add(id);store.set("vocab_wrong",VWRONG);if(VLEARNED.delete(id))store.set("vocab_learned",VLEARNED);}
+function vMarkKnown(w){const id=vid(w);VLEARNED.add(id);store.set("vocab_learned",VLEARNED);if(VWRONG.delete(id))store.set("vocab_wrong",VWRONG);}
 const vid=w=>w.w+"|"+w.r;
 const TYPES=["ALL",...[...new Set(WORDS.map(w=>w.t))]];
 const chNum=c=>parseInt(String(c).replace(/\D/g,""))||0;
@@ -602,15 +610,14 @@ function vSelCh(c){
   vSaveCh();renderChBar();vSetView(vCur);
 }
 function vToggleMulti(){vMulti=!vMulti;if(!vMulti&&!vAllCh()&&vChs.size>1)vChs=new Set([CHS.find(c=>vChs.has(c))]);vSaveCh();renderChBar();vSetView(vCur);}
-$("#vTy").innerHTML=TYPES.map(t=>`<button class="chip ${t==='ALL'?'active':''}" data-vty="${t}">${t==='ALL'?'전체':t}</button>`).join("");
-$("#vSt").innerHTML=STS.map(([v,l])=>`<button class="chip ${v==='all'?'active':''}" data-vst="${v}">${l}</button>`).join("");
-document.querySelectorAll("[data-vty]").forEach(c=>c.onclick=()=>{vType=c.dataset.vty;
-  document.querySelectorAll("[data-vty]").forEach(x=>x.classList.toggle("active",x===c));vRenderList($("#vSearch").value);});
-document.querySelectorAll("[data-vst]").forEach(c=>c.onclick=()=>{vSt=c.dataset.vst;
-  document.querySelectorAll("[data-vst]").forEach(x=>x.classList.toggle("active",x===c));vRenderList($("#vSearch").value);});
+/* 목록 필터 칩: 상태(vType·vSt)에서 매번 다시 그림 → 카드·퀴즈에서 바꾼 필터와 항상 일치 */
+function vListChips(){
+  $("#vTy").innerHTML=TYPES.map(t=>`<button class="chip ${t===vType?'active':''}" onclick="vType='${t}';vRenderList($('#vSearch').value)">${t==='ALL'?'전체':t}</button>`).join("");
+  $("#vSt").innerHTML=VSTS.map(([v,l])=>`<button class="chip ${v===vSt?'active':''}" onclick="vSt='${v}';vRenderList($('#vSearch').value)">${vStLabel(v,l)}</button>`).join("");
+}
 
 function vIn(w){return (vType==="ALL"||w.t===vType)&&vChs.has(w.ch);}
-function vStOK(w){const id=vid(w);return vSt==="all"||(vSt==="fav"&&VFAV.has(id))||(vSt==="unlearned"&&!VLEARNED.has(id));}
+function vStOK(w){const id=vid(w);return vSt==="all"||(vSt==="fav"&&VFAV.has(id))||(vSt==="unlearned"&&!VLEARNED.has(id))||(vSt==="wrong"&&VWRONG.has(id));}
 function vPool(){return WORDS.filter(w=>vIn(w)&&vStOK(w));}
 function vFiltered(f){f=f.trim().toLowerCase();
   return WORDS.filter(w=>vIn(w)&&vStOK(w)&&(!f||w.w.includes(f)||w.r.includes(f)
@@ -618,7 +625,7 @@ function vFiltered(f){f=f.trim().toLowerCase();
 function vProgress(){const p=WORDS.filter(vIn);const done=p.filter(w=>VLEARNED.has(vid(w))).length;
   const pct=p.length?Math.round(done/p.length*100):0;
   $("#vProg").innerHTML=`암기 진도 (${vChName()} · ${vType==="ALL"?"모든 품사":vType}) · ${done} / ${p.length} (${pct}%)<div class="bar"><i style="width:${pct}%"></i></div>`;}
-function vRenderList(f=""){const L=vFiltered(f);vProgress();$("#vCount").textContent=`${L.length}개`;
+function vRenderList(f=""){const L=vFiltered(f);vProgress();vListChips();$("#vCount").textContent=`${L.length}개`;
   $("#vList").innerHTML=L.length?L.map(w=>{const id=vid(w);return `
     <div class="row ${VLEARNED.has(id)?'learned':''}">
       <span class="jp">${rubyJP(w)}</span>
@@ -632,18 +639,19 @@ function vRenderList(f=""){const L=vFiltered(f);vProgress();$("#vCount").textCon
     </div>`}).join(""):`<p class="empty">조건에 맞는 단어가 없습니다.</p>`;}
 function vFav(id,el){toggleSet(VFAV,"vocab_fav",id);el.textContent=VFAV.has(id)?'★':'☆';el.classList.toggle("on",VFAV.has(id));if(vSt==="fav")vRenderList($("#vSearch").value);}
 function vLearn(id,el){toggleSet(VLEARNED,"vocab_learned",id);el.textContent=VLEARNED.has(id)?'✅':'⬜';
+  if(VLEARNED.has(id)&&VWRONG.delete(id))store.set("vocab_wrong",VWRONG);
   el.classList.toggle("on",VLEARNED.has(id));el.closest(".row").classList.toggle("learned",VLEARNED.has(id));
-  vProgress();if(vSt==="unlearned")vRenderList($("#vSearch").value);}
+  vProgress();if(vSt==="unlearned"||vSt==="wrong")vRenderList($("#vSearch").value);else vListChips();}
 
 /* 단어 카드 */
-let vfPool=[],vfIdx=0,vfDir="jp";
-function vStartCard(){vfPool=vPool().slice().sort(()=>Math.random()-0.5);vfIdx=0;vRenderCard();}
+let vfPool=[],vfIdx=0,vfDir="jp",vfUnknown=0;
+function vStartCard(){vfPool=vPool().slice().sort(()=>Math.random()-0.5);vfIdx=0;vfUnknown=0;vRenderCard();}
 function vRenderCard(){
   const head=`<div class="filters c4 d8">${TYPES.map(t=>`<button class="chip ${t===vType?'active':''}" onclick="vCardTy('${t}')">${t==='ALL'?'전체':t}</button>`).join("")}</div>
-    <div class="filters c2 d4">${STS.map(([v,l])=>`<button class="chip ${v===vSt?'active':''}" onclick="vCardSt('${v}')">${l}</button>`).join("")}
-      <button class="chip" onclick="vFlipDir()">${vfDir==="jp"?"일→한":"한→일"} ⇄</button></div>`;
+    <div class="filters c4">${VSTS.map(([v,l])=>`<button class="chip ${v===vSt?'active':''}" onclick="vCardSt('${v}')">${vStLabel(v,l)}</button>`).join("")}</div>`;
   if(!vfPool.length){$("#v-card").innerHTML=head+`<p class="empty">해당 조건의 단어가 없습니다.</p>`;return;}
-  if(vfIdx>=vfPool.length){$("#v-card").innerHTML=head+`<p class="empty">🎉 ${vfPool.length}개 학습 완료!<br><br><button class="chip" onclick="vStartCard()">다시 섞기</button></p>`;return;}
+  if(vfIdx>=vfPool.length){$("#v-card").innerHTML=head+`<p class="empty">🎉 ${vfPool.length}개 학습 완료!${vfUnknown?`<br>모름 ${vfUnknown}개`:""}<br><br>
+    ${vfUnknown?`<button class="chip active" onclick="vCardSt('wrong')">✗ 모름만 다시 보기</button> `:""}<button class="chip" onclick="vStartCard()">다시 섞기</button></p>`;return;}
   const w=vfPool[vfIdx];
   const front=vfDir==="jp"?`<div class="bigw">${w.w}</div><div class="fhint">탭하면 뜻 보기</div>`
                           :`<div class="krbig">${w.ko}</div><div class="fhint">탭하면 단어 보기</div>`;
@@ -653,7 +661,7 @@ function vRenderCard(){
                             <button class="spk" onclick="event.stopPropagation();speak('${w.r}')">🔊 듣기</button>${exBlock(w)}`;
   $("#v-card").innerHTML=head+`
     <div class="navline"><button onclick="vCardMove(-1)" ${vfIdx===0?'disabled':''}>◀ 이전</button>
-      <span class="count" style="margin:0">${vfIdx+1} / ${vfPool.length}</span>
+      <span class="count" style="margin:0">${vfIdx+1} / ${vfPool.length} <button class="dirb" onclick="vFlipDir()">${vfDir==="jp"?"일→한":"한→일"} ⇄</button></span>
       <button onclick="vCardMove(1)">다음 ▶</button></div>
     <div class="fc"><div class="fcard" onclick="this.classList.toggle('flip')">
       <div class="face f">${front}</div><div class="face b">${back}</div>
@@ -663,7 +671,7 @@ function vRenderCard(){
       <button class="know" onclick="vCardNext(true)">✓ 외움</button>
     </div>`;
 }
-function vCardNext(known){const w=vfPool[vfIdx];if(known){VLEARNED.add(vid(w));store.set("vocab_learned",VLEARNED);}vfIdx++;vRenderCard();}
+function vCardNext(known){const w=vfPool[vfIdx];if(known)vMarkKnown(w);else{vMarkUnknown(w);vfUnknown++;}vfIdx++;vRenderCard();}
 function vCardMove(d){vfIdx=Math.max(0,Math.min(vfPool.length,vfIdx+d));vRenderCard();}
 function vCardTy(t){vType=t;vStartCard();}
 function vCardSt(v){vSt=v;vStartCard();}
@@ -672,19 +680,17 @@ function vFlipDir(){vfDir=vfDir==="jp"?"ko":"jp";vRenderCard();}
 /* 단어 퀴즈 — 4가지 방식 */
 const QMODES=[["mc","객관식"],["rev","뜻 보고 단어"],["type","읽기 직접 쓰기"],["listen","듣고 고르기"],["ctx","예문 빈칸"],["exlisten","예문 듣기"]];
 const EXMODE=m=>m==="ctx"||m==="exlisten";
-let vScore=0,vTotal=0,vQMode="mc",vOnlyWrong=false,vQ=null;
-let VWRONG=store.get("vocab_wrong");
+let vScore=0,vTotal=0,vQMode="mc",vQ=null;
 try{const m=localStorage.getItem("vocab_qmode");if(QMODES.some(q=>q[0]===m))vQMode=m;}catch(e){}
 function vQuizHead(){return `<div class="filters c3 d6">${QMODES.map(([v,l])=>`<button class="chip ${v===vQMode?'active':''}" onclick="vQuizMode('${v}')">${l}</button>`).join("")}</div>
   <div class="filters c4 d8">${TYPES.map(t=>`<button class="chip ${t===vType?'active':''}" onclick="vQuizTy('${t}')">${t==='ALL'?'전체':t}</button>`).join("")}</div>
-  <div class="filters c2 d4">${STS.map(([v,l])=>`<button class="chip ${v===vSt&&!vOnlyWrong?'active':''}" onclick="vQuizSt('${v}')">${l}</button>`).join("")}
-    <button class="chip ${vOnlyWrong?'active':''}" onclick="vQuizWrong()">✗ 틀린 단어 ${WORDS.filter(w=>vIn(w)&&VWRONG.has(vid(w))).length}</button></div>`;}
-function vQuizPool(){return vOnlyWrong?WORDS.filter(w=>vIn(w)&&VWRONG.has(vid(w))):vPool();}
+  <div class="filters c4">${VSTS.map(([v,l])=>`<button class="chip ${v===vSt?'active':''}" onclick="vQuizSt('${v}')">${vStLabel(v,l)}</button>`).join("")}</div>`;}
+function vQuizPool(){return vPool();}
 function vNewQuiz(){let P=vQuizPool();if(EXMODE(vQMode))P=P.filter(w=>w.ex&&w.ex.length);
-  if(vOnlyWrong&&!P.length){$("#v-quiz").innerHTML=vQuizHead()+`<p class="empty">🎉 틀린 단어가 없어요! (퀴즈에서 틀리면 여기에 모이고, 맞히면 빠져요)</p>`;return;}
-  if(!vOnlyWrong&&P.length<4){$("#v-quiz").innerHTML=vQuizHead()+`<p class="empty">단어가 4개 이상이어야 퀴즈를 낼 수 있어요.</p>`;return;}
+  if(vSt==="wrong"&&!P.length){$("#v-quiz").innerHTML=vQuizHead()+`<p class="empty">🎉 모름 단어가 없어요! (카드에서 ✗모름·퀴즈에서 틀리면 모이고, ✓외움·정답이면 빠져요)</p>`;return;}
+  if(vSt!=="wrong"&&P.length<4){$("#v-quiz").innerHTML=vQuizHead()+`<p class="empty">단어가 4개 이상이어야 퀴즈를 낼 수 있어요.</p>`;return;}
   let c=P[Math.floor(Math.random()*P.length)];
-  if(vOnlyWrong&&vQ&&P.length>1&&c===vQ.c)c=P.find(w=>w!==vQ.c);
+  if(vSt==="wrong"&&vQ&&P.length>1&&c===vQ.c)c=P.find(w=>w!==vQ.c);
   const m=vQMode; let ask="";
   let body="",e=null;
   if(EXMODE(m)){
@@ -763,7 +769,7 @@ function vExDistractors(c,e,key){
 function vResult(ok){
   const c=vQ.c,id=vid(c);vTotal++;
   if(ok){vScore++;if(VWRONG.delete(id))store.set("vocab_wrong",VWRONG);}
-  else{VWRONG.add(id);store.set("vocab_wrong",VWRONG);}
+  else vMarkUnknown(c);
   $("#vScoreBox").textContent=`맞힘 ${vScore} / 푼 문제 ${vTotal}`;
   $("#vFeed").innerHTML=`<div class="feed ${ok?'good':'bad'}">
       <div class="fh">${ok?'⭕ 정답!':'❌ 아쉬워요'}</div>
@@ -795,8 +801,7 @@ function vTyped(giveUp){
 }
 function vQuizMode(m){vQMode=m;try{localStorage.setItem("vocab_qmode",m);}catch(e){}vNewQuiz();}
 function vQuizTy(t){vType=t;vNewQuiz();}
-function vQuizSt(v){vSt=v;vOnlyWrong=false;vNewQuiz();}
-function vQuizWrong(){vOnlyWrong=!vOnlyWrong;vNewQuiz();}
+function vQuizSt(v){vSt=v;vNewQuiz();}
 
 function vSetView(v){vCur=v;
   ["list","card","quiz"].forEach(x=>$("#v-"+x).classList.toggle("hide",x!==v));
